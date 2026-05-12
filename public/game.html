@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Sombras de Eldoria - Tower Defense</title>
+<style>
+  html, body { margin:0; padding:0; background:#0b0d0a; height:100%; overflow:hidden;
+    font-family: 'Trebuchet MS', sans-serif; color:#d8d2bf; }
+  #game { width:100vw; height:100vh; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+</head>
+<body>
+<div id="game"></div>
+<script>
+// ===== Sombras de Eldoria - MVP =====
+// Paleta sombria: verde musgo, cinza pedra, roxo noturno
+const COLORS = {
+  bgDark:    0x14181a,
+  mossDark:  0x2a3a26,
+  mossMid:   0x3d5236,
+  stone:     0x4a4a4a,
+  stoneL:    0x6b6b6b,
+  path:      0x3a2e22,
+  pathEdge:  0x241c14,
+  slot:      0x5a4a30,
+  slotHi:    0x9c8456,
+  hp:        0x6cbf4c,
+  hpBg:      0x2a1a1a,
+  base:      0x6a3a8a,    // roxo noturno
+  baseGlow:  0x9a5fbf,
+  archer:    0x4a8f5b,    // elfo verde
+  arrow:     0xe8d680,
+  orc:       0x7a3a2a,    // orc avermelhado
+  text:      0xd8d2bf,
+  gold:      0xffcc44,
+  range:     0x88ddaa,
+};
+
+const W = 1280, H = 720;
+
+// Caminho (waypoints) - serpenteia da esquerda à direita até a base
+const PATH = [
+  {x: -30,  y: 120},
+  {x: 220,  y: 120},
+  {x: 220,  y: 320},
+  {x: 520,  y: 320},
+  {x: 520,  y: 140},
+  {x: 820,  y: 140},
+  {x: 820,  y: 500},
+  {x: 380,  y: 500},
+  {x: 380,  y: 620},
+  {x: 1100, y: 620},
+  {x: 1100, y: 380},
+  {x: 1220, y: 380},
+];
+
+// Slots para torres ao longo do caminho
+const SLOTS = [
+  {x: 140, y: 220}, {x: 320, y: 220}, {x: 420, y: 240},
+  {x: 620, y: 220}, {x: 720, y: 240}, {x: 920, y: 240},
+  {x: 920, y: 440}, {x: 720, y: 420}, {x: 480, y: 420},
+  {x: 480, y: 600}, {x: 720, y: 580}, {x: 1020, y: 540},
+  {x: 1020, y: 320},
+];
+
+const TOWER_TYPES = {
+  archer: {
+    name: "Arqueiro Élfico",
+    cost: 50,
+    range: 160,
+    damage: 18,
+    fireRate: 500, // ms
+    color: COLORS.archer,
+    desc: "Dano rápido, curto alcance",
+  },
+};
+
+const WAVES = [
+  { count: 8,  hp: 50,  speed: 70, interval: 800, type: 'orc' },
+  { count: 12, hp: 70,  speed: 80, interval: 700, type: 'orc' },
+  { count: 16, hp: 100, speed: 90, interval: 600, type: 'orc' },
+];
+
+// =================== BOOT SCENE ===================
+class BootScene extends Phaser.Scene {
+  constructor() { super('BootScene'); }
+  create() {
+    this.scene.start('GameScene');
+    this.scene.launch('UIScene');
+  }
+}
+
+// =================== GAME SCENE ===================
+class GameScene extends Phaser.Scene {
+  constructor() { super('GameScene'); }
+
+  create() {
+    this.state = {
+      gold: 100,
+      hp: 20,
+      maxHp: 20,
+      wave: 0,
+      waveActive: false,
+      enemiesAlive: 0,
+      enemiesToSpawn: 0,
+      gameOver: false,
+      victory: false,
+    };
+
+    this.enemies = this.add.group();
+    this.towers = [];
+    this.projectiles = this.add.group();
+
+    this.drawBackground();
+    this.drawPath();
+    this.drawBase();
+    this.createSlots();
+
+    this.rangeIndicator = this.add.circle(0,0,0, COLORS.range, 0.15)
+      .setStrokeStyle(2, COLORS.range, 0.6).setVisible(false);
+
+    this.events.emit('stateUpdate', this.state);
+
+    this.events.on('startWave', this.startWave, this);
+  }
+
+  drawBackground() {
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.bgDark, 1).fillRect(0,0,W,H);
+    // textura mossy: manchas escuras
+    for (let i=0;i<140;i++){
+      const x = Phaser.Math.Between(0,W), y = Phaser.Math.Between(0,H);
+      const r = Phaser.Math.Between(20,80);
+      g.fillStyle(COLORS.mossDark, Phaser.Math.FloatBetween(0.15,0.35));
+      g.fillCircle(x,y,r);
+    }
+    for (let i=0;i<60;i++){
+      const x = Phaser.Math.Between(0,W), y = Phaser.Math.Between(0,H);
+      g.fillStyle(COLORS.stone, Phaser.Math.FloatBetween(0.08,0.2));
+      g.fillCircle(x,y,Phaser.Math.Between(10,40));
+    }
+  }
+
+  drawPath() {
+    const g = this.add.graphics();
+    // borda
+    g.lineStyle(54, COLORS.pathEdge, 1);
+    this.strokePath(g);
+    // interior
+    g.lineStyle(44, COLORS.path, 1);
+    this.strokePath(g);
+  }
+
+  strokePath(g) {
+    g.beginPath();
+    g.moveTo(PATH[0].x, PATH[0].y);
+    for (let i=1;i<PATH.length;i++) g.lineTo(PATH[i].x, PATH[i].y);
+    g.strokePath();
+  }
+
+  drawBase() {
+    const last = PATH[PATH.length-1];
+    const bx = last.x - 40, by = last.y;
+    this.baseSprite = this.add.container(bx, by);
+    const glow = this.add.circle(0,0,46, COLORS.baseGlow, 0.25);
+    const tower = this.add.rectangle(0,0,52,72, COLORS.base).setStrokeStyle(2, 0x2a1438);
+    const top = this.add.triangle(0,-46, -28,0, 28,0, 0,-22, 0x4a2870);
+    const rune = this.add.text(0,0,"⚜", {fontSize:'28px', color:'#ffd9ff'}).setOrigin(0.5);
+    this.baseSprite.add([glow, tower, top, rune]);
+    this.tweens.add({ targets: glow, scale: 1.25, alpha: 0.45, yoyo:true, repeat:-1, duration:1400 });
+  }
+
+  createSlots() {
+    this.slots = SLOTS.map((s, i) => {
+      const c = this.add.container(s.x, s.y);
+      const ring = this.add.circle(0,0,22, COLORS.slot, 0.45).setStrokeStyle(2, COLORS.slotHi, 0.8);
+      const cross = this.add.text(0,0,"+", {fontSize:'22px', color:'#d8c89a', fontStyle:'bold'}).setOrigin(0.5);
+      c.add([ring, cross]);
+      c.setSize(50,50).setInteractive({ useHandCursor: true });
+      c.on('pointerover', () => ring.setFillStyle(COLORS.slotHi, 0.6));
+      c.on('pointerout',  () => ring.setFillStyle(COLORS.slot, 0.45));
+      c.on('pointerdown', () => this.openSlotMenu(i));
+      return { x: s.x, y: s.y, container: c, tower: null, ring, cross };
+    });
+  }
+
+  openSlotMenu(slotIndex) {
+    const slot = this.slots[slotIndex];
+    if (slot.tower) return;
+    this.scene.get('UIScene').showBuildMenu(slot.x, slot.y, (typeKey) => {
+      this.buildTower(slotIndex, typeKey);
+    });
+  }
+
+  buildTower(slotIndex, typeKey) {
+    const slot = this.slots[slotIndex];
+    const def = TOWER_TYPES[typeKey];
+    if (!def || slot.tower) return;
+    if (this.state.gold < def.cost) return;
+    this.state.gold -= def.cost;
+
+    slot.container.disableInteractive();
+    slot.ring.setVisible(false);
+    slot.cross.setVisible(false);
+
+    const c = this.add.container(slot.x, slot.y);
+    const base = this.add.circle(0,0,22, 0x2a2418).setStrokeStyle(2, 0x6b5a36);
+    const body = this.add.rectangle(0,-6,18,28, def.color).setStrokeStyle(1, 0x1a2218);
+    const head = this.add.circle(0,-22,7, 0xe8d2a0);
+    c.add([base, body, head]);
+    c.setSize(50,50).setInteractive({ useHandCursor: true });
+
+    const tower = {
+      x: slot.x, y: slot.y, type: typeKey, def, container: c,
+      lastFire: 0, target: null,
+    };
+    slot.tower = tower;
+    this.towers.push(tower);
+
+    c.on('pointerover', () => {
+      this.rangeIndicator.setPosition(slot.x, slot.y).setRadius(def.range).setVisible(true);
+    });
+    c.on('pointerout', () => this.rangeIndicator.setVisible(false));
+
+    this.events.emit('stateUpdate', this.state);
+  }
+
+  startWave() {
+    if (this.state.waveActive || this.state.gameOver || this.state.victory) return;
+    if (this.state.wave >= WAVES.length) return;
+    const wave = WAVES[this.state.wave];
+    this.state.wave++;
+    this.state.waveActive = true;
+    this.state.enemiesToSpawn = wave.count;
+    this.spawnTimer = this.time.addEvent({
+      delay: wave.interval,
+      repeat: wave.count - 1,
+      callback: () => this.spawnEnemy(wave),
+    });
+    this.events.emit('stateUpdate', this.state);
+  }
+
+  spawnEnemy(wave) {
+    const e = this.createEnemy(wave);
+    this.enemies.add(e.container);
+    this.state.enemiesAlive++;
+  }
+
+  createEnemy(wave) {
+    const start = PATH[0];
+    const c = this.add.container(start.x, start.y);
+    const body = this.add.rectangle(0,0,26,26, COLORS.orc).setStrokeStyle(2, 0x2a0e08);
+    const label = this.add.text(0,0,"Orc", {fontSize:'10px', color:'#ffd9c8', fontStyle:'bold'}).setOrigin(0.5);
+    const hpBg = this.add.rectangle(0,-22,30,5, COLORS.hpBg).setStrokeStyle(1, 0x000000);
+    const hpBar = this.add.rectangle(-15,-22,30,5, COLORS.hp).setOrigin(0,0.5);
+    c.add([body, label, hpBg, hpBar]);
+
+    const enemy = {
+      container: c, hpBar, body, label,
+      hp: wave.hp, maxHp: wave.hp, speed: wave.speed,
+      pathIndex: 1, alive: true, reward: 8,
+    };
+    c.enemyRef = enemy;
+    if (!this.activeEnemies) this.activeEnemies = [];
+    this.activeEnemies.push(enemy);
+    return enemy;
+  }
+
+  update(time, delta) {
+    if (this.state.gameOver || this.state.victory) return;
+    const dt = delta / 1000;
+
+    // mover inimigos
+    if (this.activeEnemies) {
+      for (const e of this.activeEnemies) {
+        if (!e.alive) continue;
+        const target = PATH[e.pathIndex];
+        if (!target) continue;
+        const dx = target.x - e.container.x;
+        const dy = target.y - e.container.y;
+        const dist = Math.hypot(dx, dy);
+        const step = e.speed * dt;
+        if (step >= dist) {
+          e.container.x = target.x; e.container.y = target.y;
+          e.pathIndex++;
+          if (e.pathIndex >= PATH.length) {
+            this.enemyReachedBase(e);
+          }
+        } else {
+          e.container.x += (dx/dist) * step;
+          e.container.y += (dy/dist) * step;
+        }
+      }
+    }
+
+    // torres atiram
+    for (const t of this.towers) {
+      if (time - t.lastFire < t.def.fireRate) continue;
+      const target = this.findTarget(t);
+      if (target) {
+        this.fireProjectile(t, target);
+        t.lastFire = time;
+      }
+    }
+
+    // projéteis
+    if (this.activeProjectiles) {
+      for (const p of this.activeProjectiles) {
+        if (!p.alive) continue;
+        if (!p.target.alive) { p.alive = false; p.sprite.destroy(); continue; }
+        const dx = p.target.container.x - p.sprite.x;
+        const dy = p.target.container.y - p.sprite.y;
+        const d = Math.hypot(dx, dy);
+        const step = p.speed * dt;
+        if (step >= d) {
+          this.hitEnemy(p.target, p.damage);
+          p.alive = false; p.sprite.destroy();
+        } else {
+          p.sprite.x += (dx/d)*step;
+          p.sprite.y += (dy/d)*step;
+          p.sprite.rotation = Math.atan2(dy, dx);
+        }
+      }
+      this.activeProjectiles = this.activeProjectiles.filter(p => p.alive);
+    }
+
+    // limpar inimigos mortos/chegaram
+    if (this.activeEnemies) {
+      this.activeEnemies = this.activeEnemies.filter(e => e.alive);
+    }
+
+    // checar fim de onda
+    if (this.state.waveActive && this.state.enemiesAlive === 0
+        && this.spawnTimer && this.spawnTimer.getOverallProgress() >= 1) {
+      this.state.waveActive = false;
+      if (this.state.wave >= WAVES.length) {
+        this.state.victory = true;
+        this.events.emit('stateUpdate', this.state);
+        this.scene.launch('GameOverScene', { victory: true, wave: this.state.wave });
+      } else {
+        this.events.emit('stateUpdate', this.state);
+      }
+    }
+  }
+
+  findTarget(tower) {
+    if (!this.activeEnemies) return null;
+    let best = null, bestProg = -1;
+    for (const e of this.activeEnemies) {
+      if (!e.alive) continue;
+      const d = Math.hypot(e.container.x - tower.x, e.container.y - tower.y);
+      if (d <= tower.def.range && e.pathIndex > bestProg) {
+        best = e; bestProg = e.pathIndex;
+      }
+    }
+    return best;
+  }
+
+  fireProjectile(tower, target) {
+    const sprite = this.add.rectangle(tower.x, tower.y - 10, 14, 3, COLORS.arrow)
+      .setStrokeStyle(1, 0x2a1a08);
+    if (!this.activeProjectiles) this.activeProjectiles = [];
+    this.activeProjectiles.push({
+      sprite, target, damage: tower.def.damage, speed: 520, alive: true,
+    });
+  }
+
+  hitEnemy(e, dmg) {
+    e.hp -= dmg;
+    const ratio = Math.max(0, e.hp / e.maxHp);
+    e.hpBar.width = 30 * ratio;
+    // flash
+    e.body.setFillStyle(0xffffff);
+    this.time.delayedCall(60, () => { if (e.alive) e.body.setFillStyle(COLORS.orc); });
+    if (e.hp <= 0) {
+      e.alive = false;
+      this.state.gold += e.reward;
+      this.state.enemiesAlive--;
+      e.container.destroy();
+      this.events.emit('stateUpdate', this.state);
+    }
+  }
+
+  enemyReachedBase(e) {
+    if (!e.alive) return;
+    e.alive = false;
+    this.state.enemiesAlive--;
+    this.state.hp -= 1;
+    e.container.destroy();
+    this.cameras.main.flash(120, 80, 0, 0);
+    this.events.emit('stateUpdate', this.state);
+    if (this.state.hp <= 0) {
+      this.state.gameOver = true;
+      this.scene.launch('GameOverScene', { victory: false, wave: this.state.wave });
+    }
+  }
+}
+
+// =================== UI SCENE ===================
+class UIScene extends Phaser.Scene {
+  constructor() { super('UIScene'); }
+
+  create() {
+    const game = this.scene.get('GameScene');
+
+    // top bar
+    const bar = this.add.rectangle(W/2, 28, W, 56, 0x000000, 0.55);
+    this.hpText    = this.add.text(20, 16, "HP: 20", {fontSize:'20px', color:'#ff8a8a', fontStyle:'bold'});
+    this.goldText  = this.add.text(220, 16, "Ouro: 100", {fontSize:'20px', color:'#ffcc44', fontStyle:'bold'});
+    this.waveText  = this.add.text(440, 16, "Onda: 0 / 3", {fontSize:'20px', color:'#d8d2bf', fontStyle:'bold'});
+
+    this.startBtn = this.add.container(W - 130, 28);
+    const bg = this.add.rectangle(0,0,200,40, 0x2d5a2a).setStrokeStyle(2, 0x6cbf4c);
+    const txt = this.add.text(0,0,"Iniciar Onda", {fontSize:'18px', color:'#e8ffe0', fontStyle:'bold'}).setOrigin(0.5);
+    this.startBtn.add([bg, txt]);
+    this.startBtn.setSize(200,40).setInteractive({useHandCursor:true});
+    this.startBtn.on('pointerover', () => bg.setFillStyle(0x3d7a3a));
+    this.startBtn.on('pointerout',  () => bg.setFillStyle(0x2d5a2a));
+    this.startBtn.on('pointerdown', () => game.events.emit('startWave'));
+
+    this.title = this.add.text(W/2, 16, "Sombras de Eldoria",
+      {fontSize:'18px', color:'#c8a8ff', fontStyle:'italic'}).setOrigin(0.5,0);
+
+    game.events.on('stateUpdate', (s) => this.refresh(s));
+
+    this.menu = null;
+  }
+
+  refresh(s) {
+    this.hpText.setText(`HP: ${s.hp}`);
+    this.goldText.setText(`Ouro: ${s.gold}`);
+    this.waveText.setText(`Onda: ${s.wave} / ${WAVES.length}`);
+    this.startBtn.setAlpha(s.waveActive ? 0.4 : 1);
+  }
+
+  showBuildMenu(x, y, onPick) {
+    this.closeMenu();
+    const game = this.scene.get('GameScene');
+    const types = Object.entries(TOWER_TYPES);
+    const w = 240, lineH = 64, h = 30 + types.length * lineH;
+    let mx = x + 40, my = y - h/2;
+    if (mx + w > W) mx = x - 40 - w;
+    if (my < 60) my = 60;
+    if (my + h > H) my = H - h - 10;
+
+    const c = this.add.container(mx, my);
+    const bg = this.add.rectangle(0,0,w,h, 0x14181a, 0.96).setOrigin(0).setStrokeStyle(2, 0x6b5a36);
+    const title = this.add.text(w/2, 8, "Construir Torre", {fontSize:'14px', color:'#d8c89a', fontStyle:'bold'}).setOrigin(0.5,0);
+    c.add([bg, title]);
+
+    types.forEach(([key, def], i) => {
+      const yy = 30 + i*lineH;
+      const row = this.add.rectangle(4, yy, w-8, lineH-6, 0x2a2418, 0.8).setOrigin(0).setStrokeStyle(1, 0x4a3e22);
+      const swatch = this.add.rectangle(20, yy + (lineH-6)/2, 18, 26, def.color).setStrokeStyle(1, 0x000);
+      const canAfford = game.state.gold >= def.cost;
+      const name = this.add.text(40, yy + 6, def.name, {fontSize:'14px', color:'#e8e0c0', fontStyle:'bold'});
+      const cost = this.add.text(40, yy + 24, `Custo: ${def.cost}`,
+        {fontSize:'12px', color: canAfford ? '#ffcc44' : '#aa6666'});
+      const desc = this.add.text(40, yy + 40, def.desc, {fontSize:'11px', color:'#a8a08c'});
+      c.add([row, swatch, name, cost, desc]);
+
+      row.setInteractive({useHandCursor:true});
+      row.on('pointerover', () => row.setFillStyle(0x3d3424));
+      row.on('pointerout',  () => row.setFillStyle(0x2a2418));
+      row.on('pointerdown', () => {
+        if (!canAfford) return;
+        onPick(key);
+        this.closeMenu();
+      });
+    });
+
+    // fechar ao clicar fora
+    this.menu = c;
+    this.menuBlocker = this.add.rectangle(0,0,W,H, 0x000, 0.0001).setOrigin(0).setInteractive();
+    this.menuBlocker.on('pointerdown', () => this.closeMenu());
+    this.children.bringToTop(c);
+  }
+
+  closeMenu() {
+    if (this.menu) { this.menu.destroy(); this.menu = null; }
+    if (this.menuBlocker) { this.menuBlocker.destroy(); this.menuBlocker = null; }
+  }
+}
+
+// =================== GAME OVER SCENE ===================
+class GameOverScene extends Phaser.Scene {
+  constructor() { super('GameOverScene'); }
+  create(data) {
+    this.add.rectangle(W/2, H/2, W, H, 0x000, 0.7);
+    const title = data.victory ? "VITÓRIA!" : "DERROTA";
+    const color = data.victory ? '#9cffb0' : '#ff8a8a';
+    this.add.text(W/2, H/2 - 60, title, {fontSize:'64px', color, fontStyle:'bold'}).setOrigin(0.5);
+    this.add.text(W/2, H/2 + 10,
+      data.victory ? "Eldoria sobreviveu às trevas." : `As sombras tomaram a base na onda ${data.wave}.`,
+      {fontSize:'20px', color:'#d8d2bf'}).setOrigin(0.5);
+
+    const btn = this.add.container(W/2, H/2 + 80);
+    const bg = this.add.rectangle(0,0,200,46, 0x2d5a2a).setStrokeStyle(2, 0x6cbf4c);
+    const txt = this.add.text(0,0,"Jogar Novamente",{fontSize:'18px', color:'#e8ffe0', fontStyle:'bold'}).setOrigin(0.5);
+    btn.add([bg, txt]).setSize(200,46).setInteractive({useHandCursor:true});
+    btn.on('pointerdown', () => {
+      this.scene.stop('GameOverScene');
+      this.scene.stop('UIScene');
+      this.scene.stop('GameScene');
+      this.scene.start('BootScene');
+    });
+  }
+}
+
+// =================== CONFIG ===================
+const config = {
+  type: Phaser.AUTO,
+  parent: 'game',
+  width: W, height: H,
+  backgroundColor: '#0b0d0a',
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scene: [BootScene, GameScene, UIScene, GameOverScene],
+};
+new Phaser.Game(config);
+</script>
+</body>
+</html>
