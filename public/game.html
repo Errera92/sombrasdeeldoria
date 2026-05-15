@@ -484,6 +484,7 @@ class GameScene extends Phaser.Scene {
   update(time, delta) {
     if (this.state.gameOver || this.state.victory) return;
     const dt = (delta/1000) * this.state.speed;
+    this.projectileLayer.clear();
 
     // parallax
     if (this.parallax1) this.parallax1.x = Math.sin(time*0.00005)*8;
@@ -522,10 +523,8 @@ class GameScene extends Phaser.Scene {
       if (target) {
         this.fireProjectile(t, target);
         t.lastFire = time;
-        // animação ataque (mata tweens anteriores para não acumular)
-        this.tweens.killTweensOf(t.container);
-        t.container.setScale(1);
-        this.tweens.add({ targets: t.container, scale: 1.15, duration: 80, yoyo:true });
+        t.container.setScale(1.08);
+        this.time.delayedCall(70, () => { if (t.container && t.container.scene) t.container.setScale(1); });
       }
     }
 
@@ -535,12 +534,11 @@ class GameScene extends Phaser.Scene {
       const tgt = p.target;
       if (!tgt || !tgt.alive || !tgt.container || !tgt.container.scene) {
         p.alive = false;
-        if (p.sprite && p.sprite.scene) p.sprite.destroy();
         continue;
       }
       const tx = tgt.container.x, ty = tgt.container.y;
-      const dx = tx - p.sprite.x;
-      const dy = ty - p.sprite.y;
+      const dx = tx - p.x;
+      const dy = ty - p.y;
       const d = Math.hypot(dx, dy) || 0.0001;
       const step = p.speed * dt;
       if (step >= d) {
@@ -555,11 +553,18 @@ class GameScene extends Phaser.Scene {
           this.hitEnemy(tgt, p.damage);
         }
         p.alive = false;
-        if (p.sprite && p.sprite.scene) p.sprite.destroy();
       } else {
-        p.sprite.x += (dx/d)*step;
-        p.sprite.y += (dy/d)*step;
-        p.sprite.rotation = Math.atan2(dy, dx);
+        p.x += (dx/d)*step;
+        p.y += (dy/d)*step;
+        const tailX = p.x - (dx/d)*12;
+        const tailY = p.y - (dy/d)*12;
+        this.projectileLayer.lineStyle(3, p.color, 0.35);
+        this.projectileLayer.beginPath();
+        this.projectileLayer.moveTo(tailX, tailY);
+        this.projectileLayer.lineTo(p.x, p.y);
+        this.projectileLayer.strokePath();
+        this.projectileLayer.fillStyle(p.color, 1);
+        this.projectileLayer.fillCircle(p.x, p.y, p.radius);
       }
     }
     this.activeProjectiles = this.activeProjectiles.filter(p => p.alive);
