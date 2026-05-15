@@ -570,6 +570,10 @@ class GameScene extends Phaser.Scene {
     this.activeProjectiles = this.activeProjectiles.filter(p => p.alive);
     this.activeEnemies = this.activeEnemies.filter(e => e.alive);
 
+    for (const t of this.towers) {
+      if (t.pulseUntil && time > t.pulseUntil && t.container && t.container.scaleX !== 1) t.container.setScale(1);
+    }
+
     if (this.state.waveActive && this.state.enemiesAlive === 0
         && this.spawnTimer && this.spawnTimer.getOverallProgress() >= 1) {
       this.state.waveActive = false;
