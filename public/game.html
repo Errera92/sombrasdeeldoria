@@ -205,11 +205,15 @@ class GameScene extends Phaser.Scene {
       .setStrokeStyle(2, 0x88ddaa, 0.6).setVisible(false);
 
     this.fxLayer = this.add.container(0,0);
+    this.projectileLayer = this.add.graphics().setDepth(20);
 
     this.events.emit('stateUpdate', this.state);
     this.events.on('startWave', this.startWave, this);
     this.events.on('useItem', this.useItem, this);
-    this.events.on('setSpeed', (v) => { this.state.speed = v; this.time.timeScale = v; this.tweens.timeScale = v; });
+    this.events.on('setSpeed', (v) => {
+      this.state.speed = v;
+      if (this.spawnTimer) this.spawnTimer.timeScale = v;
+    });
   }
 
   // ---------- arte ----------
@@ -370,6 +374,7 @@ class GameScene extends Phaser.Scene {
       delay: wave.interval, repeat: wave.count - 1,
       callback: () => this.spawnEnemy(wave),
     });
+    this.spawnTimer.timeScale = this.state.speed;
     this.events.emit('stateUpdate', this.state);
   }
 
