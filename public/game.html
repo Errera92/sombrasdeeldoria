@@ -524,7 +524,7 @@ class GameScene extends Phaser.Scene {
         this.fireProjectile(t, target);
         t.lastFire = time;
         t.container.setScale(1.08);
-        this.time.delayedCall(70, () => { if (t.container && t.container.scene) t.container.setScale(1); });
+        t.pulseUntil = time + 70;
       }
     }
 
@@ -836,7 +836,7 @@ class GameOverScene extends Phaser.Scene {
 
 // =================== CONFIG ===================
 const config = {
-  type: Phaser.AUTO, parent: 'game', width: W, height: H,
+  type: Phaser.CANVAS, parent: 'game', width: W, height: H,
   backgroundColor: '#0b0d0a',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [BootScene, StageSelectScene, GameScene, UIScene, GameOverScene],
