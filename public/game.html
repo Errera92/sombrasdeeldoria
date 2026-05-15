@@ -517,7 +517,9 @@ class GameScene extends Phaser.Scene {
       if (target) {
         this.fireProjectile(t, target);
         t.lastFire = time;
-        // animação ataque
+        // animação ataque (mata tweens anteriores para não acumular)
+        this.tweens.killTweensOf(t.container);
+        t.container.setScale(1);
         this.tweens.add({ targets: t.container, scale: 1.15, duration: 80, yoyo:true });
       }
     }
