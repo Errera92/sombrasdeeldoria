@@ -546,8 +546,12 @@ class GameScene extends Phaser.Scene {
         p.sprite.x += (dx/d)*step; p.sprite.y += (dy/d)*step;
         p.sprite.rotation = Math.atan2(dy, dx);
         if (p.trail) {
-          const tr = this.add.circle(p.sprite.x, p.sprite.y, 4, p.color, 0.6);
-          this.tweens.add({ targets: tr, alpha:0, scale:0.2, duration:300, onComplete:()=>tr.destroy() });
+          p.trailAcc = (p.trailAcc || 0) + delta;
+          if (p.trailAcc >= 50) {
+            p.trailAcc = 0;
+            const tr = this.add.circle(p.sprite.x, p.sprite.y, 3, p.color, 0.5);
+            this.tweens.add({ targets: tr, alpha:0, scale:0.2, duration:250, onComplete:()=>tr.destroy() });
+          }
         }
       }
     }
