@@ -595,11 +595,16 @@ class GameScene extends Phaser.Scene {
   }
 
   fireProjectile(tower, target) {
-    const sprite = this.add.circle(tower.x, tower.y - 10, 5, tower.def.projColor)
-      .setStrokeStyle(2, 0xffffff, 0.7);
     this.activeProjectiles.push({
-      sprite, target, damage: tower.def.damage, speed: 540, alive: true,
-      color: tower.def.projColor, splash: tower.def.splash,
+      x: tower.x,
+      y: tower.y - 10,
+      target,
+      damage: tower.def.damage,
+      speed: 540,
+      radius: tower.type === 'archer' ? 4 : 6,
+      alive: true,
+      color: tower.def.projColor,
+      splash: tower.def.splash,
     });
   }
 
