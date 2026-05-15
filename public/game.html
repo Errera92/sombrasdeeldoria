@@ -205,11 +205,15 @@ class GameScene extends Phaser.Scene {
       .setStrokeStyle(2, 0x88ddaa, 0.6).setVisible(false);
 
     this.fxLayer = this.add.container(0,0);
+    this.projectileLayer = this.add.graphics().setDepth(20);
 
     this.events.emit('stateUpdate', this.state);
     this.events.on('startWave', this.startWave, this);
     this.events.on('useItem', this.useItem, this);
-    this.events.on('setSpeed', (v) => { this.state.speed = v; this.time.timeScale = v; this.tweens.timeScale = v; });
+    this.events.on('setSpeed', (v) => {
+      this.state.speed = v;
+      if (this.spawnTimer) this.spawnTimer.timeScale = v;
+    });
   }
 
   // ---------- arte ----------
@@ -370,6 +374,7 @@ class GameScene extends Phaser.Scene {
       delay: wave.interval, repeat: wave.count - 1,
       callback: () => this.spawnEnemy(wave),
     });
+    this.spawnTimer.timeScale = this.state.speed;
     this.events.emit('stateUpdate', this.state);
   }
 
@@ -479,6 +484,7 @@ class GameScene extends Phaser.Scene {
   update(time, delta) {
     if (this.state.gameOver || this.state.victory) return;
     const dt = (delta/1000) * this.state.speed;
+    this.projectileLayer.clear();
 
     // parallax
     if (this.parallax1) this.parallax1.x = Math.sin(time*0.00005)*8;
@@ -517,10 +523,8 @@ class GameScene extends Phaser.Scene {
       if (target) {
         this.fireProjectile(t, target);
         t.lastFire = time;
-        // animação ataque (mata tweens anteriores para não acumular)
-        this.tweens.killTweensOf(t.container);
-        t.container.setScale(1);
-        this.tweens.add({ targets: t.container, scale: 1.15, duration: 80, yoyo:true });
+        t.container.setScale(1.08);
+        t.pulseUntil = time + 70;
       }
     }
 
@@ -530,12 +534,11 @@ class GameScene extends Phaser.Scene {
       const tgt = p.target;
       if (!tgt || !tgt.alive || !tgt.container || !tgt.container.scene) {
         p.alive = false;
-        if (p.sprite && p.sprite.scene) p.sprite.destroy();
         continue;
       }
       const tx = tgt.container.x, ty = tgt.container.y;
-      const dx = tx - p.sprite.x;
-      const dy = ty - p.sprite.y;
+      const dx = tx - p.x;
+      const dy = ty - p.y;
       const d = Math.hypot(dx, dy) || 0.0001;
       const step = p.speed * dt;
       if (step >= d) {
@@ -550,15 +553,26 @@ class GameScene extends Phaser.Scene {
           this.hitEnemy(tgt, p.damage);
         }
         p.alive = false;
-        if (p.sprite && p.sprite.scene) p.sprite.destroy();
       } else {
-        p.sprite.x += (dx/d)*step;
-        p.sprite.y += (dy/d)*step;
-        p.sprite.rotation = Math.atan2(dy, dx);
+        p.x += (dx/d)*step;
+        p.y += (dy/d)*step;
+        const tailX = p.x - (dx/d)*12;
+        const tailY = p.y - (dy/d)*12;
+        this.projectileLayer.lineStyle(3, p.color, 0.35);
+        this.projectileLayer.beginPath();
+        this.projectileLayer.moveTo(tailX, tailY);
+        this.projectileLayer.lineTo(p.x, p.y);
+        this.projectileLayer.strokePath();
+        this.projectileLayer.fillStyle(p.color, 1);
+        this.projectileLayer.fillCircle(p.x, p.y, p.radius);
       }
     }
     this.activeProjectiles = this.activeProjectiles.filter(p => p.alive);
     this.activeEnemies = this.activeEnemies.filter(e => e.alive);
+
+    for (const t of this.towers) {
+      if (t.pulseUntil && time > t.pulseUntil && t.container && t.container.scaleX !== 1) t.container.setScale(1);
+    }
 
     if (this.state.waveActive && this.state.enemiesAlive === 0
         && this.spawnTimer && this.spawnTimer.getOverallProgress() >= 1) {
@@ -585,11 +599,16 @@ class GameScene extends Phaser.Scene {
   }
 
   fireProjectile(tower, target) {
-    const sprite = this.add.circle(tower.x, tower.y - 10, 5, tower.def.projColor)
-      .setStrokeStyle(2, 0xffffff, 0.7);
     this.activeProjectiles.push({
-      sprite, target, damage: tower.def.damage, speed: 540, alive: true,
-      color: tower.def.projColor, splash: tower.def.splash,
+      x: tower.x,
+      y: tower.y - 10,
+      target,
+      damage: tower.def.damage,
+      speed: 540,
+      radius: tower.type === 'archer' ? 4 : 6,
+      alive: true,
+      color: tower.def.projColor,
+      splash: tower.def.splash,
     });
   }
 
@@ -817,7 +836,7 @@ class GameOverScene extends Phaser.Scene {
 
 // =================== CONFIG ===================
 const config = {
-  type: Phaser.AUTO, parent: 'game', width: W, height: H,
+  type: Phaser.CANVAS, parent: 'game', width: W, height: H,
   backgroundColor: '#0b0d0a',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [BootScene, StageSelectScene, GameScene, UIScene, GameOverScene],
