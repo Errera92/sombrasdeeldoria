@@ -522,37 +522,37 @@ class GameScene extends Phaser.Scene {
       }
     }
 
-    // projéteis
+    // projéteis (sem tweens por frame — evita travamento)
     for (const p of this.activeProjectiles) {
       if (!p.alive) continue;
-      if (!p.target.alive) { p.alive = false; p.sprite.destroy(); if (p.trail) p.trail.destroy(); continue; }
-      const dx = p.target.container.x - p.sprite.x;
-      const dy = p.target.container.y - p.sprite.y;
-      const d = Math.hypot(dx, dy);
+      const tgt = p.target;
+      if (!tgt || !tgt.alive || !tgt.container || !tgt.container.scene) {
+        p.alive = false;
+        if (p.sprite && p.sprite.scene) p.sprite.destroy();
+        continue;
+      }
+      const tx = tgt.container.x, ty = tgt.container.y;
+      const dx = tx - p.sprite.x;
+      const dy = ty - p.sprite.y;
+      const d = Math.hypot(dx, dy) || 0.0001;
       const step = p.speed * dt;
       if (step >= d) {
         if (p.splash) {
-          this.spawnSpark(p.target.container.x, p.target.container.y, p.color, 10);
+          this.spawnSpark(tx, ty, p.color, 10);
           for (const e of this.activeEnemies) {
             if (!e.alive) continue;
-            const dd = Math.hypot(e.container.x - p.target.container.x, e.container.y - p.target.container.y);
+            const dd = Math.hypot(e.container.x - tx, e.container.y - ty);
             if (dd <= p.splash) this.hitEnemy(e, p.damage);
           }
         } else {
-          this.hitEnemy(p.target, p.damage);
+          this.hitEnemy(tgt, p.damage);
         }
-        p.alive = false; p.sprite.destroy(); if (p.trail) p.trail.destroy();
+        p.alive = false;
+        if (p.sprite && p.sprite.scene) p.sprite.destroy();
       } else {
-        p.sprite.x += (dx/d)*step; p.sprite.y += (dy/d)*step;
+        p.sprite.x += (dx/d)*step;
+        p.sprite.y += (dy/d)*step;
         p.sprite.rotation = Math.atan2(dy, dx);
-        if (p.trail) {
-          p.trailAcc = (p.trailAcc || 0) + delta;
-          if (p.trailAcc >= 50) {
-            p.trailAcc = 0;
-            const tr = this.add.circle(p.sprite.x, p.sprite.y, 3, p.color, 0.5);
-            this.tweens.add({ targets: tr, alpha:0, scale:0.2, duration:250, onComplete:()=>tr.destroy() });
-          }
-        }
       }
     }
     this.activeProjectiles = this.activeProjectiles.filter(p => p.alive);
