@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "sombras de eldoria tower defense" },
+      { name: "description", content: "Shadow Keep Defense is a medieval fantasy tower defense game built with Phaser.js." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "sombras de eldoria tower defense" },
+      { property: "og:description", content: "Shadow Keep Defense is a medieval fantasy tower defense game built with Phaser.js." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "sombras de eldoria tower defense" },
+      { name: "twitter:description", content: "Shadow Keep Defense is a medieval fantasy tower defense game built with Phaser.js." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c8a11d10-1732-4954-90c5-60c6dc3514a1/id-preview-281d49fc--64aa38e7-6e46-4242-87b4-93e187db2542.lovable.app-1778882076704.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c8a11d10-1732-4954-90c5-60c6dc3514a1/id-preview-281d49fc--64aa38e7-6e46-4242-87b4-93e187db2542.lovable.app-1778882076704.png" },
     ],
     links: [
       {
