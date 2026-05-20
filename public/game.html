@@ -166,8 +166,10 @@ class StageSelectScene extends Phaser.Scene {
       btn.on('pointerover', ()=> btn.setFillStyle(0x3d7a3a));
       btn.on('pointerout', ()=> btn.setFillStyle(0x2d5a2a));
       btn.on('pointerdown', () => {
+        this.scene.stop('UIScene');
+        this.scene.stop('GameScene');
+        this.scene.stop('GameOverScene');
         this.scene.start('GameScene', { stageId: s.id });
-        this.scene.launch('UIScene', { stageId: s.id });
       });
     });
   }
@@ -185,16 +187,27 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
-    this.state = {
-      gold: 150, hp: 20, maxHp: 20,
-      wave: 0, waveActive: false, enemiesAlive: 0,
-      gameOver: false, victory: false,
-      stageName: this.stage.name, totalWaves: this.WAVES.length,
-      speed: 1, freezeUntil: 0, wallUntil: 0,
-    };
+    this.spawnTimer = null;
+    this.slots = [];
     this.activeEnemies = [];
     this.activeProjectiles = [];
     this.towers = [];
+    this.enemies = null;
+    this.projectiles = null;
+    this.gameOver = false;
+    this.waveInProgress = false;
+    this.currentWave = 0;
+    this.baseHP = 20;
+    this.gold = 150;
+    this.state = {
+      gold: this.gold, hp: this.baseHP, maxHp: 20,
+      wave: this.currentWave, waveActive: this.waveInProgress, enemiesAlive: 0,
+      gameOver: this.gameOver, victory: false,
+      stageName: this.stage.name, totalWaves: this.WAVES.length,
+      speed: 1, freezeUntil: 0, wallUntil: 0,
+    };
+    this.handleSpeedChange = this.handleSpeedChange.bind(this);
+    this.events.once('shutdown', this.shutdownGame, this);
 
     this.drawBackground();
     this.drawPath();
@@ -207,13 +220,43 @@ class GameScene extends Phaser.Scene {
     this.fxLayer = this.add.container(0,0);
     this.projectileLayer = this.add.graphics().setDepth(20);
 
+    this.scene.launch('UIScene', { gameScene: this });
     this.events.emit('stateUpdate', this.state);
     this.events.on('startWave', this.startWave, this);
     this.events.on('useItem', this.useItem, this);
-    this.events.on('setSpeed', (v) => {
-      this.state.speed = v;
-      if (this.spawnTimer) this.spawnTimer.timeScale = v;
-    });
+    this.events.on('setSpeed', this.handleSpeedChange, this);
+  }
+
+  handleSpeedChange(v) {
+    this.state.speed = v;
+    if (this.spawnTimer) this.spawnTimer.timeScale = v;
+  }
+
+  shutdownGame() {
+    this.events.off('startWave', this.startWave, this);
+    this.events.off('useItem', this.useItem, this);
+    this.events.off('setSpeed', this.handleSpeedChange, this);
+    this.tweens.killAll();
+    this.time.removeAllEvents();
+    if (this.physics && this.physics.world && this.physics.world.shutdown) this.physics.world.shutdown();
+    if (this.enemies && this.enemies.clear) this.enemies.clear(true, true);
+    if (this.projectiles && this.projectiles.clear) this.projectiles.clear(true, true);
+    for (const e of this.activeEnemies || []) if (e.container && e.container.scene) e.container.destroy();
+    for (const t of this.towers || []) if (t.container && t.container.scene) t.container.destroy();
+    for (const s of this.slots || []) if (s.container && s.container.scene) s.container.destroy();
+    if (this.projectileLayer && this.projectileLayer.scene) this.projectileLayer.destroy();
+    if (this.rangeIndicator && this.rangeIndicator.scene) this.rangeIndicator.destroy();
+    this.activeEnemies = [];
+    this.activeProjectiles = [];
+    this.towers = [];
+    this.slots = [];
+    this.spawnTimer = null;
+  }
+
+  exitToGameOver(data) {
+    this.scene.stop('UIScene');
+    this.scene.stop('GameScene');
+    this.scene.start('GameOverScene', data);
   }
 
   // ---------- arte ----------
