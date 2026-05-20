@@ -245,10 +245,10 @@ class GameScene extends Phaser.Scene {
     this.tweens.killAll();
     this.time.removeAllEvents();
     try { if (this.physics && this.physics.world && this.physics.world.shutdown) this.physics.world.shutdown(); } catch (_) {}
-    if (this.enemies && this.enemies.clear) this.enemies.clear(true, true);
-    if (this.projectiles && this.projectiles.clear) this.projectiles.clear(true, true);
-    if (this.towerGroup && this.towerGroup.clear) this.towerGroup.clear(true, true);
-    if (this.slotGroup && this.slotGroup.clear) this.slotGroup.clear(true, true);
+    this.clearGroup(this.enemies);
+    this.clearGroup(this.projectiles);
+    this.clearGroup(this.towerGroup);
+    this.clearGroup(this.slotGroup);
     for (const e of this.activeEnemies || []) if (e.container && e.container.scene) e.container.destroy();
     for (const t of this.towers || []) if (t.container && t.container.scene) t.container.destroy();
     for (const s of this.slots || []) if (s.container && s.container.scene) s.container.destroy();
@@ -259,6 +259,12 @@ class GameScene extends Phaser.Scene {
     this.towers = [];
     this.slots = [];
     this.spawnTimer = null;
+  }
+
+  clearGroup(group) {
+    if (!group) return;
+    try { if (group.clear) group.clear(true, true); }
+    catch (_) { try { if (group.destroy) group.destroy(); } catch (_) {} }
   }
 
   exitToGameOver(data) {
