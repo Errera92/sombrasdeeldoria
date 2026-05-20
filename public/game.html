@@ -653,7 +653,7 @@ class GameScene extends Phaser.Scene {
   }
 
   fireProjectile(tower, target) {
-    this.activeProjectiles.push({
+    const projectile = {
       x: tower.x,
       y: tower.y - 10,
       target,
@@ -663,7 +663,8 @@ class GameScene extends Phaser.Scene {
       alive: true,
       color: tower.def.projColor,
       splash: tower.def.splash,
-    });
+    };
+    this.activeProjectiles.push(projectile);
   }
 
   hitEnemy(e, dmg) {
@@ -900,7 +901,7 @@ class GameOverScene extends Phaser.Scene {
     });
     mk(W/2 + 130, "Jogar Novamente", () => {
       this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
-      this.scene.start('BootScene');
+      this.scene.start('StageSelectScene');
     });
   }
 }
