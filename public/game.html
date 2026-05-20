@@ -166,8 +166,10 @@ class StageSelectScene extends Phaser.Scene {
       btn.on('pointerover', ()=> btn.setFillStyle(0x3d7a3a));
       btn.on('pointerout', ()=> btn.setFillStyle(0x2d5a2a));
       btn.on('pointerdown', () => {
+        this.scene.stop('UIScene');
+        this.scene.stop('GameScene');
+        this.scene.stop('GameOverScene');
         this.scene.start('GameScene', { stageId: s.id });
-        this.scene.launch('UIScene', { stageId: s.id });
       });
     });
   }
@@ -185,16 +187,33 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
-    this.state = {
-      gold: 150, hp: 20, maxHp: 20,
-      wave: 0, waveActive: false, enemiesAlive: 0,
-      gameOver: false, victory: false,
-      stageName: this.stage.name, totalWaves: this.WAVES.length,
-      speed: 1, freezeUntil: 0, wallUntil: 0,
-    };
+    this.spawnTimer = null;
+    this.slots = [];
     this.activeEnemies = [];
     this.activeProjectiles = [];
     this.towers = [];
+    this.enemies = null;
+    this.projectiles = null;
+    this.towerGroup = null;
+    this.slotGroup = null;
+    this.gameOver = false;
+    this.waveInProgress = false;
+    this.currentWave = 0;
+    this.baseHP = 20;
+    this.gold = 150;
+    this.state = {
+      gold: this.gold, hp: this.baseHP, maxHp: 20,
+      wave: this.currentWave, waveActive: this.waveInProgress, enemiesAlive: 0,
+      gameOver: this.gameOver, victory: false,
+      stageName: this.stage.name, totalWaves: this.WAVES.length,
+      speed: 1, freezeUntil: 0, wallUntil: 0,
+    };
+    this.handleSpeedChange = this.handleSpeedChange.bind(this);
+    this.events.once('shutdown', this.shutdownGame, this);
+    this.enemies = this.add.group();
+    this.projectiles = this.add.group();
+    this.towerGroup = this.add.group();
+    this.slotGroup = this.add.group();
 
     this.drawBackground();
     this.drawPath();
@@ -207,13 +226,51 @@ class GameScene extends Phaser.Scene {
     this.fxLayer = this.add.container(0,0);
     this.projectileLayer = this.add.graphics().setDepth(20);
 
+    this.scene.launch('UIScene', { gameScene: this });
     this.events.emit('stateUpdate', this.state);
     this.events.on('startWave', this.startWave, this);
     this.events.on('useItem', this.useItem, this);
-    this.events.on('setSpeed', (v) => {
-      this.state.speed = v;
-      if (this.spawnTimer) this.spawnTimer.timeScale = v;
-    });
+    this.events.on('setSpeed', this.handleSpeedChange, this);
+  }
+
+  handleSpeedChange(v) {
+    this.state.speed = v;
+    if (this.spawnTimer) this.spawnTimer.timeScale = v;
+  }
+
+  shutdownGame() {
+    this.events.off('startWave', this.startWave, this);
+    this.events.off('useItem', this.useItem, this);
+    this.events.off('setSpeed', this.handleSpeedChange, this);
+    this.tweens.killAll();
+    this.time.removeAllEvents();
+    try { if (this.physics && this.physics.world && this.physics.world.shutdown) this.physics.world.shutdown(); } catch (_) {}
+    this.clearGroup(this.enemies);
+    this.clearGroup(this.projectiles);
+    this.clearGroup(this.towerGroup);
+    this.clearGroup(this.slotGroup);
+    for (const e of this.activeEnemies || []) if (e.container && e.container.scene) e.container.destroy();
+    for (const t of this.towers || []) if (t.container && t.container.scene) t.container.destroy();
+    for (const s of this.slots || []) if (s.container && s.container.scene) s.container.destroy();
+    if (this.projectileLayer && this.projectileLayer.scene) this.projectileLayer.destroy();
+    if (this.rangeIndicator && this.rangeIndicator.scene) this.rangeIndicator.destroy();
+    this.activeEnemies = [];
+    this.activeProjectiles = [];
+    this.towers = [];
+    this.slots = [];
+    this.spawnTimer = null;
+  }
+
+  clearGroup(group) {
+    if (!group) return;
+    try { if (group.clear) group.clear(true, true); }
+    catch (_) { try { if (group.destroy) group.destroy(); } catch (_) {} }
+  }
+
+  exitToGameOver(data) {
+    this.scene.stop('UIScene');
+    this.scene.stop('GameScene');
+    this.scene.start('GameOverScene', data);
   }
 
   // ---------- arte ----------
@@ -308,6 +365,7 @@ class GameScene extends Phaser.Scene {
       c.on('pointerover', () => ring.setFillStyle(0x9c8456, 0.6));
       c.on('pointerout',  () => ring.setFillStyle(0x5a4a30, 0.45));
       c.on('pointerdown', () => this.openSlotMenu(i));
+      this.slotGroup.add(c);
       return { x: s.x, y: s.y, container: c, tower: null, ring, cross };
     });
   }
@@ -357,6 +415,7 @@ class GameScene extends Phaser.Scene {
     const tower = { x: slot.x, y: slot.y, type: typeKey, def, container: c, lastFire: 0, target: null };
     slot.tower = tower;
     this.towers.push(tower);
+    this.towerGroup.add(c);
 
     c.on('pointerover', () => this.rangeIndicator.setPosition(slot.x, slot.y).setRadius(def.range).setVisible(true));
     c.on('pointerout', () => this.rangeIndicator.setVisible(false));
@@ -411,6 +470,7 @@ class GameScene extends Phaser.Scene {
       hpBarW: sz+4,
     };
     this.activeEnemies.push(enemy);
+    this.enemies.add(c);
     this.state.enemiesAlive++;
   }
 
@@ -581,7 +641,7 @@ class GameScene extends Phaser.Scene {
       if (this.state.wave >= this.WAVES.length) {
         this.state.victory = true;
         this.events.emit('stateUpdate', this.state);
-        this.scene.launch('GameOverScene', { victory: true, wave: this.state.wave, stage: this.stage.name });
+        this.exitToGameOver({ victory: true, wave: this.state.wave, stage: this.stage.name });
       } else {
         this.events.emit('stateUpdate', this.state);
       }
@@ -599,7 +659,7 @@ class GameScene extends Phaser.Scene {
   }
 
   fireProjectile(tower, target) {
-    this.activeProjectiles.push({
+    const projectile = {
       x: tower.x,
       y: tower.y - 10,
       target,
@@ -609,7 +669,8 @@ class GameScene extends Phaser.Scene {
       alive: true,
       color: tower.def.projColor,
       splash: tower.def.splash,
-    });
+    };
+    this.activeProjectiles.push(projectile);
   }
 
   hitEnemy(e, dmg) {
@@ -642,7 +703,7 @@ class GameScene extends Phaser.Scene {
     this.events.emit('stateUpdate', this.state);
     if (this.state.hp <= 0) {
       this.state.gameOver = true;
-      this.scene.launch('GameOverScene', { victory: false, wave: this.state.wave, stage: this.stage.name });
+      this.exitToGameOver({ victory: false, wave: this.state.wave, stage: this.stage.name });
     }
   }
 }
@@ -650,9 +711,15 @@ class GameScene extends Phaser.Scene {
 // =================== UI ===================
 class UIScene extends Phaser.Scene {
   constructor() { super('UIScene'); }
-  init(data) { this.stageId = data.stageId || 0; }
+  init(data) {
+    this.gameScene = data.gameScene || null;
+    this.stageId = this.gameScene ? this.gameScene.stage.id : 0;
+  }
   create() {
-    const game = this.scene.get('GameScene');
+    const game = this.gameScene || this.scene.get('GameScene');
+    this.gameScene = game;
+    this.refreshHandler = (s) => this.refresh(s);
+    this.events.once('shutdown', this.shutdownUI, this);
 
     this.add.rectangle(W/2, 28, W, 56, 0x000000, 0.6);
     this.hpText    = this.add.text(20, 16, "HP: 20", {fontSize:'20px', color:'#ff8a8a', fontStyle:'bold'});
@@ -703,8 +770,19 @@ class UIScene extends Phaser.Scene {
     this.shopOpen = false;
     this.buildShop();
 
-    game.events.on('stateUpdate', (s) => this.refresh(s));
+    game.events.on('stateUpdate', this.refreshHandler);
     this.menu = null;
+  }
+
+  shutdownUI() {
+    if (this.gameScene && this.gameScene.events && this.refreshHandler) {
+      this.gameScene.events.off('stateUpdate', this.refreshHandler);
+    }
+    this.closeMenu();
+    this.tweens.killAll();
+    this.time.removeAllEvents();
+    this.gameScene = null;
+    this.refreshHandler = null;
   }
 
   buildShop() {
@@ -829,7 +907,7 @@ class GameOverScene extends Phaser.Scene {
     });
     mk(W/2 + 130, "Jogar Novamente", () => {
       this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
-      this.scene.start('BootScene');
+      this.scene.start('StageSelectScene');
     });
   }
 }
@@ -841,7 +919,7 @@ const config = {
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [BootScene, StageSelectScene, GameScene, UIScene, GameOverScene],
 };
-new Phaser.Game(config);
+window.eldoriaGame = new Phaser.Game(config);
 </script>
 </body>
 </html>
