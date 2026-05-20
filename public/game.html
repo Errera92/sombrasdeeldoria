@@ -624,7 +624,7 @@ class GameScene extends Phaser.Scene {
       if (this.state.wave >= this.WAVES.length) {
         this.state.victory = true;
         this.events.emit('stateUpdate', this.state);
-        this.scene.launch('GameOverScene', { victory: true, wave: this.state.wave, stage: this.stage.name });
+        this.exitToGameOver({ victory: true, wave: this.state.wave, stage: this.stage.name });
       } else {
         this.events.emit('stateUpdate', this.state);
       }
@@ -685,7 +685,7 @@ class GameScene extends Phaser.Scene {
     this.events.emit('stateUpdate', this.state);
     if (this.state.hp <= 0) {
       this.state.gameOver = true;
-      this.scene.launch('GameOverScene', { victory: false, wave: this.state.wave, stage: this.stage.name });
+      this.exitToGameOver({ victory: false, wave: this.state.wave, stage: this.stage.name });
     }
   }
 }
@@ -693,9 +693,15 @@ class GameScene extends Phaser.Scene {
 // =================== UI ===================
 class UIScene extends Phaser.Scene {
   constructor() { super('UIScene'); }
-  init(data) { this.stageId = data.stageId || 0; }
+  init(data) {
+    this.gameScene = data.gameScene || null;
+    this.stageId = this.gameScene ? this.gameScene.stage.id : 0;
+  }
   create() {
-    const game = this.scene.get('GameScene');
+    const game = this.gameScene || this.scene.get('GameScene');
+    this.gameScene = game;
+    this.refreshHandler = (s) => this.refresh(s);
+    this.events.once('shutdown', this.shutdownUI, this);
 
     this.add.rectangle(W/2, 28, W, 56, 0x000000, 0.6);
     this.hpText    = this.add.text(20, 16, "HP: 20", {fontSize:'20px', color:'#ff8a8a', fontStyle:'bold'});
@@ -746,8 +752,19 @@ class UIScene extends Phaser.Scene {
     this.shopOpen = false;
     this.buildShop();
 
-    game.events.on('stateUpdate', (s) => this.refresh(s));
+    game.events.on('stateUpdate', this.refreshHandler);
     this.menu = null;
+  }
+
+  shutdownUI() {
+    if (this.gameScene && this.gameScene.events && this.refreshHandler) {
+      this.gameScene.events.off('stateUpdate', this.refreshHandler);
+    }
+    this.closeMenu();
+    this.tweens.killAll();
+    this.time.removeAllEvents();
+    this.gameScene = null;
+    this.refreshHandler = null;
   }
 
   buildShop() {
