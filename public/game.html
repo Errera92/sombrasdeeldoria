@@ -359,6 +359,7 @@ class GameScene extends Phaser.Scene {
       c.on('pointerover', () => ring.setFillStyle(0x9c8456, 0.6));
       c.on('pointerout',  () => ring.setFillStyle(0x5a4a30, 0.45));
       c.on('pointerdown', () => this.openSlotMenu(i));
+      this.slotGroup.add(c);
       return { x: s.x, y: s.y, container: c, tower: null, ring, cross };
     });
   }
@@ -408,6 +409,7 @@ class GameScene extends Phaser.Scene {
     const tower = { x: slot.x, y: slot.y, type: typeKey, def, container: c, lastFire: 0, target: null };
     slot.tower = tower;
     this.towers.push(tower);
+    this.towerGroup.add(c);
 
     c.on('pointerover', () => this.rangeIndicator.setPosition(slot.x, slot.y).setRadius(def.range).setVisible(true));
     c.on('pointerout', () => this.rangeIndicator.setVisible(false));
@@ -462,6 +464,7 @@ class GameScene extends Phaser.Scene {
       hpBarW: sz+4,
     };
     this.activeEnemies.push(enemy);
+    this.enemies.add(c);
     this.state.enemiesAlive++;
   }
 
