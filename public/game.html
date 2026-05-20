@@ -194,6 +194,8 @@ class GameScene extends Phaser.Scene {
     this.towers = [];
     this.enemies = null;
     this.projectiles = null;
+    this.towerGroup = null;
+    this.slotGroup = null;
     this.gameOver = false;
     this.waveInProgress = false;
     this.currentWave = 0;
@@ -208,6 +210,10 @@ class GameScene extends Phaser.Scene {
     };
     this.handleSpeedChange = this.handleSpeedChange.bind(this);
     this.events.once('shutdown', this.shutdownGame, this);
+    this.enemies = this.add.group();
+    this.projectiles = this.add.group();
+    this.towerGroup = this.add.group();
+    this.slotGroup = this.add.group();
 
     this.drawBackground();
     this.drawPath();
@@ -241,6 +247,8 @@ class GameScene extends Phaser.Scene {
     if (this.physics && this.physics.world && this.physics.world.shutdown) this.physics.world.shutdown();
     if (this.enemies && this.enemies.clear) this.enemies.clear(true, true);
     if (this.projectiles && this.projectiles.clear) this.projectiles.clear(true, true);
+    if (this.towerGroup && this.towerGroup.clear) this.towerGroup.clear(true, true);
+    if (this.slotGroup && this.slotGroup.clear) this.slotGroup.clear(true, true);
     for (const e of this.activeEnemies || []) if (e.container && e.container.scene) e.container.destroy();
     for (const t of this.towers || []) if (t.container && t.container.scene) t.container.destroy();
     for (const s of this.slots || []) if (s.container && s.container.scene) s.container.destroy();
