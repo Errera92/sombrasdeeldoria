@@ -244,7 +244,7 @@ class GameScene extends Phaser.Scene {
     this.events.off('setSpeed', this.handleSpeedChange, this);
     this.tweens.killAll();
     this.time.removeAllEvents();
-    if (this.physics && this.physics.world && this.physics.world.shutdown) this.physics.world.shutdown();
+    try { if (this.physics && this.physics.world && this.physics.world.shutdown) this.physics.world.shutdown(); } catch (_) {}
     if (this.enemies && this.enemies.clear) this.enemies.clear(true, true);
     if (this.projectiles && this.projectiles.clear) this.projectiles.clear(true, true);
     if (this.towerGroup && this.towerGroup.clear) this.towerGroup.clear(true, true);
