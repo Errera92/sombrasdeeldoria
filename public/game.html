@@ -909,7 +909,7 @@ class GameScene extends Phaser.Scene {
     if (!e.alive) return;
     e.hp -= dmg;
     const ratio = Math.max(0, e.hp / e.maxHp);
-    e.hpBar.width = e.hpBarW * ratio;
+    if (e.drawHp) e.drawHp(ratio); else if (e.hpBar) e.hpBar.width = e.hpBarW * ratio;
     if (e.body.setFillStyle) {
       const orig = e.typeDef.color;
       e.body.setFillStyle(0xffffff);
