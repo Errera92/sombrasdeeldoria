@@ -105,6 +105,51 @@ function buildWaves(stage) {
   return waves;
 }
 
+// =============== HELPERS VISUAIS ===============
+const FONT_TITLE = 'Georgia, serif';
+const FONT_BTN   = 'Trebuchet MS, sans-serif';
+
+function hpColor(r) {
+  if (r > 0.6) return 0x6cbf4c;
+  if (r > 0.3) return 0xffcc44;
+  return 0xff4d4d;
+}
+
+function makeButton(scene, x, y, w, h, label, opts) {
+  opts = opts || {};
+  const fill      = opts.fill      != null ? opts.fill      : 0x3a1a6e;
+  const stroke    = opts.stroke    != null ? opts.stroke    : 0xffd700;
+  const hoverFill = opts.hoverFill != null ? opts.hoverFill : 0x5a2aae;
+  const fontSize  = opts.fontSize  || 18;
+  const fontColor = opts.fontColor || '#ffe8a8';
+  const radius    = opts.radius    != null ? opts.radius    : 14;
+  const onClick   = opts.onClick   || function(){};
+
+  const c = scene.add.container(x, y);
+  const g = scene.add.graphics();
+  const draw = (f, s) => {
+    g.clear();
+    g.fillStyle(f, 1).fillRoundedRect(-w/2, -h/2, w, h, radius);
+    g.lineStyle(2, s, 1).strokeRoundedRect(-w/2, -h/2, w, h, radius);
+  };
+  draw(fill, stroke);
+  const txt = scene.add.text(0, 0, label, {
+    fontSize: fontSize+'px', color: fontColor, fontFamily: FONT_BTN, fontStyle: 'bold'
+  }).setOrigin(0.5);
+  txt.setShadow(2, 2, '#000000', 3);
+  c.add([g, txt]);
+  c.setSize(w, h).setInteractive({ useHandCursor: true });
+  c.on('pointerover', () => draw(hoverFill, 0xffffff));
+  c.on('pointerout',  () => { draw(fill, stroke); c.setScale(1); });
+  c.on('pointerdown', () => {
+    scene.tweens.add({ targets: c, scale: 0.95, duration: 80, yoyo: true });
+    onClick();
+  });
+  c.btnRedraw = draw;
+  c.btnLabel  = txt;
+  return c;
+}
+
 // =================== BOOT ===================
 class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
