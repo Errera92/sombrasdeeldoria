@@ -625,36 +625,86 @@ class GameScene extends Phaser.Scene {
     const c = this.add.container(start.x, start.y);
     const sz = t.size;
     let body;
+
+    // sombra no chão
+    const shadow = this.add.ellipse(0, sz/2+2, sz*0.9, sz*0.35, 0x000000, 0.45);
+    c.add(shadow);
+
     if (wave.type === 'orc') {
-      body = this.add.ellipse(0,0,sz,sz*0.95, t.color).setStrokeStyle(2, 0x2a0e08);
-      const eye1 = this.add.circle(-5,-2,2,0xffcc44);
-      const eye2 = this.add.circle(5,-2,2,0xffcc44);
-      c.add([body, eye1, eye2]);
+      // corpo oval verde-musgo
+      body = this.add.ellipse(0, 2, sz*0.95, sz*1.05, 0x556b2f).setStrokeStyle(2, 0x2a3318);
+      // cabeça redonda
+      const head = this.add.circle(0, -sz*0.4, sz*0.42, 0x6b8a3a).setStrokeStyle(2, 0x2a3318);
+      // olhos vermelhos pontudos
+      const eye1 = this.add.triangle(-sz*0.18, -sz*0.42, -3,-2, 3,-2, 0,3, 0xff3322);
+      const eye2 = this.add.triangle( sz*0.18, -sz*0.42, -3,-2, 3,-2, 0,3, 0xff3322);
+      // presas
+      const fang1 = this.add.triangle(-sz*0.12, -sz*0.22, -2,-3, 2,-3, 0,4, 0xffffff);
+      const fang2 = this.add.triangle( sz*0.12, -sz*0.22, -2,-3, 2,-3, 0,4, 0xffffff);
+      c.add([body, head, eye1, eye2, fang1, fang2]);
+      // animação de corrida
+      this.tweens.add({ targets: c, y: '+=2', yoyo: true, repeat: -1, duration: 180, ease: 'Sine.inOut' });
+
     } else if (wave.type === 'troll') {
-      body = this.add.ellipse(0,0,sz*1.05,sz, t.color).setStrokeStyle(3, 0x1a2810);
-      const armor = this.add.rectangle(0,2,sz*0.7,sz*0.4, 0x3a3a3a).setStrokeStyle(1,0x666);
-      c.add([body, armor]);
+      // corpo quadrado grande
+      body = this.add.rectangle(0, 2, sz*1.05, sz*1.1, 0x3d3d3d).setStrokeStyle(3, 0x1a1a1a);
+      // ombros largos (cantos)
+      const sh1 = this.add.rectangle(-sz*0.55, -sz*0.2, sz*0.3, sz*0.3, 0x2a2a2a).setStrokeStyle(2, 0x111);
+      const sh2 = this.add.rectangle( sz*0.55, -sz*0.2, sz*0.3, sz*0.3, 0x2a2a2a).setStrokeStyle(2, 0x111);
+      // armadura no torso
+      const armorG = this.add.graphics();
+      armorG.lineStyle(2, 0x6a6a6a, 1);
+      armorG.strokeRect(-sz*0.3, -sz*0.15, sz*0.6, sz*0.5);
+      armorG.beginPath(); armorG.moveTo(0, -sz*0.15); armorG.lineTo(0, sz*0.35); armorG.strokePath();
+      armorG.beginPath(); armorG.moveTo(-sz*0.3, sz*0.1); armorG.lineTo(sz*0.3, sz*0.1); armorG.strokePath();
+      // olhos amarelos
+      const eye1 = this.add.circle(-sz*0.2, -sz*0.32, 2.5, 0xffe044);
+      const eye2 = this.add.circle( sz*0.2, -sz*0.32, 2.5, 0xffe044);
+      c.add([body, sh1, sh2, armorG, eye1, eye2]);
+      // pisada pesada
+      this.tweens.add({ targets: c, scaleY: 0.95, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.inOut' });
+
     } else {
-      body = this.add.ellipse(0,-3,sz,sz*1.2, t.color).setStrokeStyle(2, 0x2a1838);
-      body.setAlpha(t.alpha);
-      const skull = this.add.text(0,-4,"☠",{fontSize:'14px',color:'#e8d8ff'}).setOrigin(0.5);
-      c.add([body, skull]);
-      this.tweens.add({ targets: body, alpha: 0.4, yoyo:true, repeat:-1, duration: 600 });
+      // wraith — aura externa sfumada
+      const halo = this.add.ellipse(0, -2, sz*1.6, sz*1.9, 0x6a3a8a, 0.25);
+      // corpo etéreo
+      body = this.add.ellipse(0, -3, sz, sz*1.25, 0x4a1a6a).setStrokeStyle(2, 0x8a4abf);
+      body.setAlpha(0.75);
+      const skull = this.add.text(0, -4, "☠", { fontSize:'14px', color:'#e8d8ff' }).setOrigin(0.5);
+      skull.setShadow(0, 0, '#ffaaff', 6);
+      c.add([halo, body, skull]);
+      this.tweens.add({ targets: halo, alpha: 0.1, scale: 1.15, yoyo: true, repeat: -1, duration: 900 });
+      this.tweens.add({ targets: body, alpha: 0.45, yoyo: true, repeat: -1, duration: 700 });
+      // flutuação senoidal
+      this.tweens.add({ targets: c, y: '+=4', yoyo: true, repeat: -1, duration: 800, ease: 'Sine.inOut' });
     }
-    const hpBg = this.add.rectangle(0,-sz/2-8,sz+4,5, 0x2a1a1a).setStrokeStyle(1,0x000);
-    const hpBar = this.add.rectangle(-(sz+4)/2,-sz/2-8,sz+4,5, 0x6cbf4c).setOrigin(0,0.5);
-    c.add([hpBg, hpBar]);
+
+    // HP bar arredondada via Graphics
+    const hpW = sz + 8, hpH = 6, hpY = -sz/2 - 10;
+    const hpG = this.add.graphics();
+    const drawHp = (ratio) => {
+      hpG.clear();
+      hpG.fillStyle(0x111111, 0.85).fillRoundedRect(-hpW/2, hpY, hpW, hpH, 3);
+      hpG.lineStyle(1, 0x000000, 1).strokeRoundedRect(-hpW/2, hpY, hpW, hpH, 3);
+      const fillW = Math.max(0, hpW * ratio);
+      if (fillW > 1) hpG.fillStyle(hpColor(ratio), 1).fillRoundedRect(-hpW/2+1, hpY+1, fillW-2, hpH-2, 2);
+    };
+    drawHp(1);
+    c.add(hpG);
 
     const enemy = {
-      container: c, hpBar, body, type: wave.type, typeDef: t,
+      container: c, body, type: wave.type, typeDef: t,
       hp: wave.hp, maxHp: wave.hp, speed: wave.speed,
       pathIndex: 1, alive: true, reward: t.reward,
-      hpBarW: sz+4,
+      hpG, drawHp,
+      // hpBar shim para compat: drawHp ainda funciona; mantemos prop p/ legado
+      hpBar: { width: hpW }, hpBarW: hpW,
     };
     this.activeEnemies.push(enemy);
     this.enemies.add(c);
     this.state.enemiesAlive++;
   }
+
 
   // ---------- itens ----------
   useItem(key) {
