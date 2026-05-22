@@ -1146,30 +1146,47 @@ class UIScene extends Phaser.Scene {
     this.closeMenu();
     const game = this.scene.get('GameScene');
     const types = Object.entries(TOWER_TYPES);
-    const w = 240, lineH = 64, h = 30 + types.length * lineH;
+    const w = 240, lineH = 64, h = 36 + types.length * lineH;
     let mx = x + 40, my = y - h/2;
     if (mx + w > W) mx = x - 40 - w;
     if (my < 60) my = 60;
     if (my + h > H) my = H - h - 10;
 
     const c = this.add.container(mx, my);
-    const bg = this.add.rectangle(0,0,w,h, 0x14181a, 0.96).setOrigin(0).setStrokeStyle(2, 0x6b5a36);
-    const title = this.add.text(w/2, 8, "Construir Torre", {fontSize:'14px', color:'#d8c89a', fontStyle:'bold'}).setOrigin(0.5,0);
-    c.add([bg, title]);
+    const panelG = this.add.graphics();
+    panelG.fillStyle(0x14181a, 0.96).fillRoundedRect(0, 0, w, h, 14);
+    panelG.lineStyle(2, 0xc9a84c, 0.9).strokeRoundedRect(0, 0, w, h, 14);
+    const title = this.add.text(w/2, 10, "Construir Torre", {
+      fontSize:'16px', color:'#f0d8a8', fontFamily: FONT_TITLE, fontStyle:'bold'
+    }).setOrigin(0.5,0);
+    title.setShadow(2,2,'#000',3);
+    c.add([panelG, title]);
 
     types.forEach(([key, def], i) => {
-      const yy = 30 + i*lineH;
-      const row = this.add.rectangle(4, yy, w-8, lineH-6, 0x2a2418, 0.8).setOrigin(0).setStrokeStyle(1, 0x4a3e22);
-      const swatch = this.add.rectangle(20, yy + (lineH-6)/2, 18, 26, def.color).setStrokeStyle(1, 0x000);
+      const yy = 34 + i*lineH;
+      const rowW = w-8, rowH = lineH-6;
+      const rg = this.add.graphics();
+      const drawRow = (fill, stroke) => {
+        rg.clear();
+        rg.fillStyle(fill, 0.92).fillRoundedRect(4, yy, rowW, rowH, 10);
+        rg.lineStyle(1.5, stroke, 0.9).strokeRoundedRect(4, yy, rowW, rowH, 10);
+      };
       const canAfford = game.state.gold >= def.cost;
-      const name = this.add.text(40, yy + 6, def.name, {fontSize:'14px', color:'#e8e0c0', fontStyle:'bold'});
-      const cost = this.add.text(40, yy + 24, `Custo: ${def.cost}`, {fontSize:'12px', color: canAfford ? '#ffcc44' : '#aa6666'});
-      const desc = this.add.text(40, yy + 40, def.desc, {fontSize:'11px', color:'#a8a08c'});
-      c.add([row, swatch, name, cost, desc]);
-      row.setInteractive({useHandCursor:true});
-      row.on('pointerover', () => row.setFillStyle(0x3d3424));
-      row.on('pointerout',  () => row.setFillStyle(0x2a2418));
-      row.on('pointerdown', () => { if (!canAfford) return; onPick(key); this.closeMenu(); });
+      drawRow(0x2a2418, canAfford ? 0xc9a84c : 0x6a5a36);
+      const swatchG = this.add.graphics();
+      swatchG.fillStyle(def.color, 1).fillRoundedRect(14, yy + rowH/2 - 13, 20, 26, 4);
+      swatchG.lineStyle(1, 0x000, 1).strokeRoundedRect(14, yy + rowH/2 - 13, 20, 26, 4);
+      const name = this.add.text(44, yy + 6, def.name, {fontSize:'14px', color:'#f0e0c0', fontFamily: FONT_BTN, fontStyle:'bold'});
+      const cost = this.add.text(44, yy + 24, `Custo: ${def.cost}`, {fontSize:'12px', color: canAfford ? '#ffcc44' : '#aa6666', fontFamily: FONT_BTN, fontStyle:'bold'});
+      const desc = this.add.text(44, yy + 40, def.desc, {fontSize:'11px', color:'#a8a08c', fontFamily: FONT_BTN});
+      [name, cost].forEach(t=>t.setShadow(1,1,'#000',2));
+      c.add([rg, swatchG, name, cost, desc]);
+
+      const hit = this.add.zone(4, yy, rowW, rowH).setOrigin(0).setInteractive({useHandCursor: true});
+      hit.on('pointerover', () => drawRow(0x3d3424, 0xffe88a));
+      hit.on('pointerout',  () => drawRow(0x2a2418, canAfford ? 0xc9a84c : 0x6a5a36));
+      hit.on('pointerdown', () => { if (!canAfford) return; onPick(key); this.closeMenu(); });
+      c.add(hit);
     });
 
     this.menu = c;
@@ -1188,31 +1205,45 @@ class UIScene extends Phaser.Scene {
 class GameOverScene extends Phaser.Scene {
   constructor() { super('GameOverScene'); }
   create(data) {
-    this.add.rectangle(W/2, H/2, W, H, 0x000, 0.75);
+    // fundo escurecido com vinheta
+    this.add.rectangle(W/2, H/2, W, H, 0x000000, 0.78);
+    const vignette = this.add.graphics();
+    vignette.fillStyle(data.victory ? 0x1a3d2a : 0x3d1a1a, 0.35);
+    vignette.fillCircle(W/2, H/2, 400);
+
     const title = data.victory ? "VITÓRIA!" : "DERROTA";
     const color = data.victory ? '#9cffb0' : '#ff8a8a';
-    this.add.text(W/2, H/2 - 80, title, {fontSize:'72px', color, fontStyle:'bold'}).setOrigin(0.5);
-    this.add.text(W/2, H/2 - 10,
-      data.victory ? `${data.stage} foi defendida.` : `As trevas tomaram ${data.stage} na onda ${data.wave}.`,
-      {fontSize:'20px', color:'#d8d2bf'}).setOrigin(0.5);
+    const glowColor = data.victory ? '#44ff88' : '#ff4444';
+    const tt = this.add.text(W/2, H/2 - 80, title, {
+      fontSize:'80px', color, fontFamily: FONT_TITLE, fontStyle:'bold'
+    }).setOrigin(0.5);
+    tt.setShadow(0, 0, glowColor, 20, true, true);
+    this.tweens.add({ targets: tt, scale: 1.05, yoyo: true, repeat: -1, duration: 1200, ease: 'Sine.inOut' });
 
-    const mk = (x, label, fn) => {
-      const c = this.add.container(x, H/2 + 80);
-      const bg = this.add.rectangle(0,0,220,46, 0x2d5a2a).setStrokeStyle(2, 0x6cbf4c);
-      const t = this.add.text(0,0,label,{fontSize:'18px', color:'#e8ffe0', fontStyle:'bold'}).setOrigin(0.5);
-      c.add([bg, t]).setSize(220,46).setInteractive({useHandCursor:true});
-      c.on('pointerdown', fn);
-      return c;
-    };
-    mk(W/2 - 130, "Selecionar Estágio", () => {
-      this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
-      this.scene.start('StageSelectScene');
+    const sub = this.add.text(W/2, H/2 - 10,
+      data.victory ? `${data.stage} foi defendida.` : `As trevas tomaram ${data.stage} na onda ${data.wave}.`,
+      { fontSize:'22px', color:'#e8dfc0', fontFamily: FONT_TITLE, fontStyle:'italic' }
+    ).setOrigin(0.5);
+    sub.setShadow(2,2,'#000',4);
+
+    makeButton(this, W/2 - 130, H/2 + 90, 220, 50, "Selecionar Estágio", {
+      fill: 0x1d4a1a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
+      fontSize: 17, fontColor: '#e8ffe0',
+      onClick: () => {
+        this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
+        this.scene.start('StageSelectScene');
+      }
     });
-    mk(W/2 + 130, "Jogar Novamente", () => {
-      this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
-      this.scene.start('StageSelectScene');
+    makeButton(this, W/2 + 130, H/2 + 90, 220, 50, "Jogar Novamente", {
+      fill: 0x3a1a6e, stroke: 0xffd700, hoverFill: 0x5a2aae,
+      fontSize: 17, fontColor: '#ffe8a8',
+      onClick: () => {
+        this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
+        this.scene.start('StageSelectScene');
+      }
     });
   }
+
 }
 
 // =================== CONFIG ===================
