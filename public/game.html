@@ -156,22 +156,6 @@ class BootScene extends Phaser.Scene {
   create() { this.scene.start('StageSelectScene'); }
 }
 
-// =================== STAGE SELECT ===================
-class StageSelectScene extends Phaser.Scene {
-  constructor() { super('StageSelectScene'); }
-  create() {
-    const g = this.add.graphics();
-    g.fillStyle(0x0b0d0a,1).fillRect(0,0,W,H);
-    for (let i=0;i<200;i++){
-      g.fillStyle(0x1a1a22, Phaser.Math.FloatBetween(0.1,0.3));
-      g.fillCircle(Phaser.Math.Between(0,W),Phaser.Math.Between(0,H),Phaser.Math.Between(10,60));
-    }
-    this.add.text(W/2, 60, "SOMBRAS DE ELDORIA", {fontSize:'52px', color:'#c8a8ff', fontStyle:'bold'}).setOrigin(0.5);
-    this.add.text(W/2, 120, "Escolha seu estágio", {fontSize:'22px', color:'#d8d2bf', fontStyle:'italic'}).setOrigin(0.5);
-
-    const cardW = 360, cardH = 420, gap = 40;
-    const totalW = STAGES.length*cardW + (STAGES.length-1)*gap;
-    const startX = (W - totalW)/2;
 
 // =================== STAGE SELECT ===================
 class StageSelectScene extends Phaser.Scene {
