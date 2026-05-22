@@ -817,10 +817,15 @@ class GameScene extends Phaser.Scene {
         t.lastFire = time;
         t.container.setScale(1.08);
         t.pulseUntil = time + 70;
+        // flash branco rápido no topo da torre
+        const fp = t.flashPos || { x: 0, y: -16 };
+        const flash = this.add.circle(t.x + fp.x, t.y + fp.y, 12, 0xffffff, 0.85);
+        this.tweens.add({ targets: flash, alpha: 0, scale: 2, duration: 160, onComplete: () => flash.destroy() });
       }
     }
 
     // projéteis (sem tweens por frame — evita travamento)
+    const pl = this.projectileLayer;
     for (const p of this.activeProjectiles) {
       if (!p.alive) continue;
       const tgt = p.target;
@@ -848,15 +853,53 @@ class GameScene extends Phaser.Scene {
       } else {
         p.x += (dx/d)*step;
         p.y += (dy/d)*step;
-        const tailX = p.x - (dx/d)*12;
-        const tailY = p.y - (dy/d)*12;
-        this.projectileLayer.lineStyle(3, p.color, 0.35);
-        this.projectileLayer.beginPath();
-        this.projectileLayer.moveTo(tailX, tailY);
-        this.projectileLayer.lineTo(p.x, p.y);
-        this.projectileLayer.strokePath();
-        this.projectileLayer.fillStyle(p.color, 1);
-        this.projectileLayer.fillCircle(p.x, p.y, p.radius);
+        const ang = Math.atan2(dy, dx);
+        p.angle = (p.angle || 0) + (p.spin || 0) * dt;
+
+        if (p.kind === 'archer') {
+          // flecha: linha fina + ponta triangular amarela
+          const sx = p.x - Math.cos(ang) * 14;
+          const sy = p.y - Math.sin(ang) * 14;
+          pl.lineStyle(2, 0x8a6a3a, 1);
+          pl.beginPath(); pl.moveTo(sx, sy); pl.lineTo(p.x, p.y); pl.strokePath();
+          // ponta
+          const tipL = 8, tipW = 4;
+          const bx = p.x - Math.cos(ang) * tipL;
+          const by = p.y - Math.sin(ang) * tipL;
+          const nx = -Math.sin(ang) * tipW;
+          const ny =  Math.cos(ang) * tipW;
+          pl.fillStyle(0xffe044, 1);
+          pl.fillTriangle(p.x, p.y, bx+nx, by+ny, bx-nx, by-ny);
+          // rastro verde fadeando
+          pl.fillStyle(0x6cbf4c, 0.35);
+          pl.fillCircle(sx, sy, 3);
+          pl.fillStyle(0x6cbf4c, 0.18);
+          pl.fillCircle(sx - Math.cos(ang)*6, sy - Math.sin(ang)*6, 4);
+
+        } else if (p.kind === 'dwarf') {
+          // rocha rotacionando
+          const r = 6;
+          pl.fillStyle(0x4a4a4a, 1).fillCircle(p.x, p.y, r);
+          pl.lineStyle(1.5, 0x2a2a2a, 1).strokeCircle(p.x, p.y, r);
+          // detalhes da rocha que giram
+          const a1 = p.angle, a2 = p.angle + 2.1, a3 = p.angle + 4.2;
+          pl.fillStyle(0x6a6a6a, 1);
+          pl.fillCircle(p.x + Math.cos(a1)*2.5, p.y + Math.sin(a1)*2.5, 1.5);
+          pl.fillCircle(p.x + Math.cos(a2)*2.5, p.y + Math.sin(a2)*2.5, 1.5);
+          pl.fillCircle(p.x + Math.cos(a3)*2.5, p.y + Math.sin(a3)*2.5, 1.5);
+
+        } else {
+          // mago: orbe roxo com halo pulsante
+          const pulse = 0.6 + Math.sin(time * 0.02) * 0.4;
+          pl.fillStyle(0xc89cff, 0.25 * pulse).fillCircle(p.x, p.y, 12);
+          pl.fillStyle(0xc89cff, 0.5).fillCircle(p.x, p.y, 8);
+          pl.fillStyle(0xffffff, 0.9).fillCircle(p.x, p.y, 4);
+          // trail de faíscas
+          const tailX = p.x - (dx/d)*10;
+          const tailY = p.y - (dy/d)*10;
+          pl.fillStyle(0xc89cff, 0.4).fillCircle(tailX, tailY, 3);
+          pl.fillStyle(0x9a5fbf, 0.25).fillCircle(tailX - (dx/d)*5, tailY - (dy/d)*5, 4);
+        }
       }
     }
     this.activeProjectiles = this.activeProjectiles.filter(p => p.alive);
@@ -891,9 +934,10 @@ class GameScene extends Phaser.Scene {
   }
 
   fireProjectile(tower, target) {
+    const fp = tower.flashPos || { x: 0, y: -10 };
     const projectile = {
-      x: tower.x,
-      y: tower.y - 10,
+      x: tower.x + fp.x,
+      y: tower.y + fp.y,
       target,
       damage: tower.def.damage,
       speed: 540,
@@ -901,9 +945,13 @@ class GameScene extends Phaser.Scene {
       alive: true,
       color: tower.def.projColor,
       splash: tower.def.splash,
+      kind: tower.type,
+      angle: 0,
+      spin: tower.type === 'dwarf' ? 12 : 0,
     };
     this.activeProjectiles.push(projectile);
   }
+
 
   hitEnemy(e, dmg) {
     if (!e.alive) return;
