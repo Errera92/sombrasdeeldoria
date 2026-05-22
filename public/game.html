@@ -173,17 +173,66 @@ class StageSelectScene extends Phaser.Scene {
     const totalW = STAGES.length*cardW + (STAGES.length-1)*gap;
     const startX = (W - totalW)/2;
 
+// =================== STAGE SELECT ===================
+class StageSelectScene extends Phaser.Scene {
+  constructor() { super('StageSelectScene'); }
+  create() {
+    // gradiente simulado (faixas horizontais do roxo escuro ao preto)
+    const bgG = this.add.graphics();
+    const bands = 40;
+    for (let i=0; i<bands; i++) {
+      const t = i/(bands-1);
+      const r = Math.round(0x18 + (0x05-0x18)*t);
+      const gg = Math.round(0x06 + (0x02-0x06)*t);
+      const b = Math.round(0x24 + (0x08-0x24)*t);
+      bgG.fillStyle((r<<16)|(gg<<8)|b, 1).fillRect(0, i*(H/bands), W, Math.ceil(H/bands)+1);
+    }
+    // estrelas sutis
+    const stars = this.add.graphics();
+    for (let i=0;i<140;i++){
+      stars.fillStyle(0xc8a8ff, Phaser.Math.FloatBetween(0.1,0.45));
+      stars.fillCircle(Phaser.Math.Between(0,W),Phaser.Math.Between(0,H),Phaser.Math.FloatBetween(0.6,1.8));
+    }
+
+    // título flutuante
+    const titleC = this.add.container(W/2, 80);
+    const t1 = this.add.text(0, 0, "SOMBRAS DE ELDORIA", {
+      fontSize:'58px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'bold'
+    }).setOrigin(0.5);
+    t1.setShadow(3, 4, '#000000', 8, true, true);
+    const t1b = this.add.text(0, 0, "SOMBRAS DE ELDORIA", {
+      fontSize:'58px', color:'#6a2a8a', fontFamily: FONT_TITLE, fontStyle:'bold'
+    }).setOrigin(0.5).setAlpha(0.45);
+    t1b.setShadow(0, 0, '#ffaaff', 18, true, true);
+    titleC.add([t1b, t1]);
+    this.tweens.add({ targets: titleC, y: 90, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.inOut' });
+
+    this.add.text(W/2, 130, "Escolha seu estágio", {
+      fontSize:'22px', color:'#d8d2bf', fontFamily: FONT_TITLE, fontStyle:'italic'
+    }).setOrigin(0.5).setShadow(2,2,'#000',3);
+
+    const cardW = 360, cardH = 420, gap = 40;
+    const totalW = STAGES.length*cardW + (STAGES.length-1)*gap;
+    const startX = (W - totalW)/2;
+
     STAGES.forEach((s, i) => {
       const x = startX + i*(cardW+gap);
       const y = 170;
       const c = this.add.container(x + cardW/2, y + cardH/2);
-      const bg = this.add.rectangle(0,0,cardW,cardH, s.palette.bg).setStrokeStyle(3, 0x6b5a36);
-      c.add(bg);
+
+      // card arredondado com borda dourada
+      const cardG = this.add.graphics();
+      const drawCard = (gold) => {
+        cardG.clear();
+        cardG.fillStyle(s.palette.bg, 1).fillRoundedRect(-cardW/2, -cardH/2, cardW, cardH, 18);
+        cardG.lineStyle(3, gold, 1).strokeRoundedRect(-cardW/2, -cardH/2, cardW, cardH, 18);
+      };
+      drawCard(0xc9a84c);
+      c.add(cardG);
 
       // mini preview
       const prev = this.add.graphics();
-      prev.fillStyle(s.palette.moss, 1).fillRect(-cardW/2+16, -cardH/2+50, cardW-32, 200);
-      // path
+      prev.fillStyle(s.palette.moss, 1).fillRoundedRect(-cardW/2+16, -cardH/2+50, cardW-32, 200, 10);
       prev.lineStyle(10, s.palette.pathEdge, 1);
       prev.beginPath();
       const px = (p) => -cardW/2+16 + (p.x+30)/1340 * (cardW-32);
@@ -198,24 +247,37 @@ class StageSelectScene extends Phaser.Scene {
       prev.strokePath();
       c.add(prev);
 
-      const title = this.add.text(0, -cardH/2+20, s.name, {fontSize:'24px', color:'#e8d8ff', fontStyle:'bold'}).setOrigin(0.5,0);
-      const stars = '★'.repeat(s.difficulty) + '☆'.repeat(3-s.difficulty);
-      const dif = this.add.text(0, -cardH/2+270, stars, {fontSize:'30px', color:'#ffcc44'}).setOrigin(0.5,0);
-      const desc = this.add.text(0, -cardH/2+320, ['Curvas suaves\nIdeal para começar','Zigue-zague agressivo\nInimigos +20% velocidade','Espiral caótica\nWraiths em maioria'][i],
-        {fontSize:'14px', color:'#d8d2bf', align:'center'}).setOrigin(0.5,0);
-      const btn = this.add.rectangle(0, cardH/2-40, 200, 50, 0x2d5a2a).setStrokeStyle(2, 0x6cbf4c);
-      const btnT = this.add.text(0, cardH/2-40, "Jogar", {fontSize:'22px', color:'#e8ffe0', fontStyle:'bold'}).setOrigin(0.5);
-      c.add([title, dif, desc, btn, btnT]);
+      const title = this.add.text(0, -cardH/2+20, s.name, {
+        fontSize:'24px', color:'#f0e0ff', fontFamily: FONT_TITLE, fontStyle:'bold'
+      }).setOrigin(0.5,0);
+      title.setShadow(2,2,'#000',4);
+      const stars2 = '★'.repeat(s.difficulty) + '☆'.repeat(3-s.difficulty);
+      const dif = this.add.text(0, -cardH/2+270, stars2, {fontSize:'30px', color:'#ffcc44'}).setOrigin(0.5,0);
+      dif.setShadow(2,2,'#000',3);
+      const desc = this.add.text(0, -cardH/2+320,
+        ['Curvas suaves\nIdeal para começar','Zigue-zague agressivo\nInimigos +20% velocidade','Espiral caótica\nWraiths em maioria'][i],
+        {fontSize:'14px', color:'#d8d2bf', align:'center', fontFamily: FONT_BTN}).setOrigin(0.5,0);
+      desc.setShadow(1,1,'#000',2);
+      c.add([title, dif, desc]);
 
-      btn.setInteractive({useHandCursor:true});
-      btn.on('pointerover', ()=> btn.setFillStyle(0x3d7a3a));
-      btn.on('pointerout', ()=> btn.setFillStyle(0x2d5a2a));
-      btn.on('pointerdown', () => {
-        this.scene.stop('UIScene');
-        this.scene.stop('GameScene');
-        this.scene.stop('GameOverScene');
-        this.scene.start('GameScene', { stageId: s.id });
+      const btn = makeButton(this, 0, cardH/2-40, 200, 50, "Jogar", {
+        fill: 0x2d5a2a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
+        fontSize: 22, fontColor: '#e8ffe0',
+        onClick: () => {
+          this.scene.stop('UIScene');
+          this.scene.stop('GameScene');
+          this.scene.stop('GameOverScene');
+          this.scene.start('GameScene', { stageId: s.id });
+        }
       });
+      c.add(btn);
+
+      // hover do card: brilho dourado
+      const hit = this.add.zone(0, 0, cardW, cardH).setInteractive();
+      hit.on('pointerover', () => drawCard(0xffe88a));
+      hit.on('pointerout',  () => drawCard(0xc9a84c));
+      c.add(hit);
+      c.sendToBack(cardG);
     });
   }
 }
