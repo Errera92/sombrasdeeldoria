@@ -479,31 +479,121 @@ class GameScene extends Phaser.Scene {
     slot.ring.setVisible(false); slot.cross.setVisible(false);
 
     const c = this.add.container(slot.x, slot.y);
-    const base = this.add.circle(0,8,22, 0x2a2418).setStrokeStyle(2, 0x6b5a36);
-    c.add(base);
-    // silhuetas distintas
+
+    // sombra projetada no chão
+    const shadow = this.add.ellipse(0, 18, 42, 12, 0x000000, 0.45);
+    c.add(shadow);
+
+    // base octogonal/trapezoidal/cilíndrica + topo distinto
+    const g = this.add.graphics();
+    let topPart = null;
+    let flashPos = { x: 0, y: -18 };
+
     if (typeKey === 'archer') {
-      const body = this.add.triangle(0,-4, -10,12, 10,12, 0,-18, def.color).setStrokeStyle(1, 0x1a2218);
-      const head = this.add.circle(0,-22,7, 0xe8d2a0);
-      const bow = this.add.arc(8,-6,10,-60,60).setStrokeStyle(2,0x8a6a3a);
-      c.add([body, head, bow]);
+      // base octogonal verde-esmeralda
+      const oct = [];
+      for (let i=0;i<8;i++){
+        const a = (Math.PI*2*i/8) + Math.PI/8;
+        oct.push(Math.cos(a)*18, Math.sin(a)*7 + 8);
+      }
+      g.fillStyle(0x1a3328, 1).fillPoints(oct.map((v,i)=>({x:v, y: oct[i+1]})).filter((_,i)=>i%2===0), true);
+      g.fillStyle(0x2d6a4f, 1);
+      g.beginPath();
+      for (let i=0;i<oct.length;i+=2){
+        if (i===0) g.moveTo(oct[i], oct[i+1]-4);
+        else g.lineTo(oct[i], oct[i+1]-4);
+      }
+      g.closePath().fillPath();
+      g.lineStyle(1, 0x0d1a14, 1).strokePath();
+      // corpo cilíndrico fino
+      g.fillStyle(0x2d6a4f, 1).fillRect(-7, -18, 14, 22);
+      g.lineStyle(1, 0x0d1a14, 1).strokeRect(-7, -18, 14, 22);
+      // topo em ponta élfica com 2 orelhas
+      g.fillStyle(0x3d8a6a, 1);
+      g.beginPath();
+      g.moveTo(-9, -18); g.lineTo(0, -34); g.lineTo(9, -18); g.closePath().fillPath();
+      g.lineStyle(1, 0x0d1a14, 1).strokePath();
+      // orelhas
+      g.fillStyle(0x2d6a4f, 1);
+      g.fillTriangle(-11, -20, -16, -28, -7, -22);
+      g.fillTriangle( 11, -20,  16, -28,  7, -22);
+      // gema dourada
+      g.fillStyle(0xffd700, 1).fillCircle(0, -22, 3);
+      g.lineStyle(1, 0xffffff, 0.7).strokeCircle(0, -22, 3);
+      c.add(g);
+      topPart = this.add.circle(0, -22, 4, 0xffd700, 0).setStrokeStyle(1.5, 0xffffaa, 0.9);
+      c.add(topPart);
+      this.tweens.add({ targets: topPart, scale: 1.4, alpha: 0.4, yoyo: true, repeat: -1, duration: 1100 });
+      flashPos = { x: 0, y: -22 };
+
     } else if (typeKey === 'dwarf') {
-      const body = this.add.rectangle(0,-2,24,22, def.color).setStrokeStyle(1, 0x1a1208);
-      const head = this.add.circle(0,-18,8, 0xd0a868);
-      const beard = this.add.triangle(0,-12, -8,-12, 8,-12, 0,2, 0xd8c898);
-      const hammer = this.add.rectangle(14,-8,6,16, 0x999999).setStrokeStyle(1, 0x333);
-      c.add([body, head, beard, hammer]);
+      // base trapezoidal larga em granito
+      g.fillStyle(0x2a2a2a, 1);
+      g.beginPath();
+      g.moveTo(-22, 14); g.lineTo(22, 14); g.lineTo(18, -10); g.lineTo(-18, -10);
+      g.closePath().fillPath();
+      g.lineStyle(1.5, 0x111111, 1).strokePath();
+      g.fillStyle(0x4a4a4a, 1);
+      g.beginPath();
+      g.moveTo(-20, 12); g.lineTo(20, 12); g.lineTo(16, -8); g.lineTo(-16, -8);
+      g.closePath().fillPath();
+      // linhas de blocos
+      g.lineStyle(1, 0x2a2a2a, 0.8);
+      g.beginLine = true;
+      for (const yy of [-2, 6]) {
+        g.beginPath(); g.moveTo(-18, yy); g.lineTo(18, yy); g.strokePath();
+      }
+      for (const xx of [-10, 0, 10]) {
+        g.beginPath(); g.moveTo(xx, -8); g.lineTo(xx, 12); g.strokePath();
+      }
+      // torre central
+      g.fillStyle(0x5a5a5a, 1).fillRect(-12, -22, 24, 14);
+      g.lineStyle(1, 0x1a1a1a, 1).strokeRect(-12, -22, 24, 14);
+      // 3 ameias no topo
+      for (const ax of [-12, -3, 6]) {
+        g.fillStyle(0x4a4a4a, 1).fillRect(ax, -28, 6, 6);
+        g.lineStyle(1, 0x1a1a1a, 1).strokeRect(ax, -28, 6, 6);
+      }
+      // forja acesa
+      g.fillStyle(0xff7a1a, 1).fillCircle(0, -14, 4);
+      g.fillStyle(0xffdd66, 0.8).fillCircle(0, -14, 2);
+      c.add(g);
+      topPart = this.add.circle(0, -14, 5, 0xff7a1a, 0).setStrokeStyle(2, 0xffaa44, 0.7);
+      c.add(topPart);
+      this.tweens.add({ targets: topPart, scale: 1.5, alpha: 0.3, yoyo: true, repeat: -1, duration: 700 });
+      flashPos = { x: 0, y: -14 };
+
     } else if (typeKey === 'mage') {
-      const robe = this.add.triangle(0,-2, -16,14, 16,14, 0,-22, def.color).setStrokeStyle(1, 0x2a1248);
-      const hood = this.add.triangle(0,-26, -8,-14, 8,-14, 0,-34, 0x3a1860);
-      const orb = this.add.circle(10,-4,5, 0xc89cff).setStrokeStyle(1, 0xffffff, 0.6);
-      c.add([robe, hood, orb]);
-      this.tweens.add({ targets: orb, alpha: 0.4, yoyo:true, repeat:-1, duration:800 });
+      // base cilíndrica roxa
+      g.fillStyle(0x3a0858, 1).fillEllipse(0, 12, 36, 12);
+      g.fillStyle(0x6a0dad, 1).fillRect(-13, -14, 26, 26);
+      g.lineStyle(1.5, 0x2a0844, 1).strokeRect(-13, -14, 26, 26);
+      // runas (losangos) ao redor
+      g.fillStyle(0xc89cff, 1);
+      for (const rx of [-13, 13]) {
+        for (const ry of [-6, 6]) {
+          g.fillTriangle(rx, ry-3, rx+3, ry, rx, ry+3);
+          g.fillTriangle(rx, ry-3, rx-3, ry, rx, ry+3);
+        }
+      }
+      // topo cônico
+      g.fillStyle(0x4a0a78, 1);
+      g.fillTriangle(-14, -14, 14, -14, 0, -34);
+      g.lineStyle(1, 0x2a0844, 1).strokePath();
+      // gema topo
+      g.fillStyle(0xffd700, 1).fillCircle(0, -32, 3);
+      c.add(g);
+      // aura pulsante
+      const aura = this.add.circle(0, -4, 24, 0xc89cff, 0.18);
+      c.addAt(aura, 1);
+      this.tweens.add({ targets: aura, scale: 1.3, alpha: 0.05, yoyo: true, repeat: -1, duration: 1200 });
+      topPart = aura;
+      flashPos = { x: 0, y: -10 };
     }
 
     c.setSize(50,50).setInteractive({ useHandCursor: true });
 
-    const tower = { x: slot.x, y: slot.y, type: typeKey, def, container: c, lastFire: 0, target: null };
+    const tower = { x: slot.x, y: slot.y, type: typeKey, def, container: c, lastFire: 0, target: null, flashPos };
     slot.tower = tower;
     this.towers.push(tower);
     this.towerGroup.add(c);
@@ -512,6 +602,7 @@ class GameScene extends Phaser.Scene {
     c.on('pointerout', () => this.rangeIndicator.setVisible(false));
     this.events.emit('stateUpdate', this.state);
   }
+
 
   // ---------- ondas ----------
   startWave() {
