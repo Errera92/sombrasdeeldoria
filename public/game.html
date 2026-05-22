@@ -1001,43 +1001,46 @@ class UIScene extends Phaser.Scene {
     this.refreshHandler = (s) => this.refresh(s);
     this.events.once('shutdown', this.shutdownUI, this);
 
-    this.add.rectangle(W/2, 28, W, 56, 0x000000, 0.6);
-    this.hpText    = this.add.text(20, 16, "HP: 20", {fontSize:'20px', color:'#ff8a8a', fontStyle:'bold'});
-    this.goldText  = this.add.text(160, 16, "Ouro: 150", {fontSize:'20px', color:'#ffcc44', fontStyle:'bold'});
-    this.waveText  = this.add.text(340, 16, "Onda: 0/10", {fontSize:'20px', color:'#d8d2bf', fontStyle:'bold'});
-    this.title = this.add.text(W/2, 8, STAGES[this.stageId].name, {fontSize:'18px', color:'#c8a8ff', fontStyle:'italic'}).setOrigin(0.5,0);
+    // top bar arredondada
+    const topG = this.add.graphics();
+    topG.fillStyle(0x000000, 0.7).fillRoundedRect(8, 4, W-16, 50, 12);
+    topG.lineStyle(1, 0xc9a84c, 0.6).strokeRoundedRect(8, 4, W-16, 50, 12);
+
+    this.hpText    = this.add.text(24, 18, "HP: 20",      {fontSize:'20px', color:'#ff8a8a', fontFamily: FONT_BTN, fontStyle:'bold'});
+    this.goldText  = this.add.text(160, 18, "Ouro: 150",  {fontSize:'20px', color:'#ffcc44', fontFamily: FONT_BTN, fontStyle:'bold'});
+    this.waveText  = this.add.text(340, 18, "Onda: 0/10", {fontSize:'20px', color:'#e8e0c8', fontFamily: FONT_BTN, fontStyle:'bold'});
+    [this.hpText, this.goldText, this.waveText].forEach(t => t.setShadow(2,2,'#000000',3));
+    this.title = this.add.text(W/2, 8, STAGES[this.stageId].name, {fontSize:'18px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'italic'}).setOrigin(0.5,0);
+    this.title.setShadow(2,2,'#000000',4);
 
     // botão velocidade
     this.speedIcons = ['🐢','🐇','🚀'];
     this.speedVals = [1,2,3];
     this.speedIdx = 0;
-    this.speedBtn = this.add.container(W - 380, 28);
-    const sbg = this.add.rectangle(0,0,90,40, 0x2d3a5a).setStrokeStyle(2, 0x6c8cbf);
-    this.speedTxt = this.add.text(0,0,"🐢 1×", {fontSize:'18px', color:'#e0e8ff', fontStyle:'bold'}).setOrigin(0.5);
-    this.speedBtn.add([sbg, this.speedTxt]);
-    this.speedBtn.setSize(90,40).setInteractive({useHandCursor:true});
-    this.speedBtn.on('pointerdown', () => {
-      this.speedIdx = (this.speedIdx+1) % 3;
-      this.speedTxt.setText(`${this.speedIcons[this.speedIdx]} ${this.speedVals[this.speedIdx]}×`);
-      game.events.emit('setSpeed', this.speedVals[this.speedIdx]);
+    this.speedBtn = makeButton(this, W - 380, 28, 90, 40, "🐢 1×", {
+      fill: 0x1a2a4a, stroke: 0x6c8cbf, hoverFill: 0x2d3a5a,
+      fontSize: 16, fontColor: '#e0e8ff', radius: 12,
+      onClick: () => {
+        this.speedIdx = (this.speedIdx+1) % 3;
+        this.speedBtn.btnLabel.setText(`${this.speedIcons[this.speedIdx]} ${this.speedVals[this.speedIdx]}×`);
+        game.events.emit('setSpeed', this.speedVals[this.speedIdx]);
+      }
     });
 
     // botão loja
-    this.shopBtn = this.add.container(W - 270, 28);
-    const shbg = this.add.rectangle(0,0,90,40, 0x5a3a2d).setStrokeStyle(2, 0xbf8c6c);
-    const shtx = this.add.text(0,0,"🛒 Loja", {fontSize:'16px', color:'#ffe0c0', fontStyle:'bold'}).setOrigin(0.5);
-    this.shopBtn.add([shbg, shtx]);
-    this.shopBtn.setSize(90,40).setInteractive({useHandCursor:true});
-    this.shopBtn.on('pointerdown', () => this.toggleShop());
+    this.shopBtn = makeButton(this, W - 270, 28, 90, 40, "🛒 Loja", {
+      fill: 0x3a1a08, stroke: 0xbf8c6c, hoverFill: 0x5a3a2d,
+      fontSize: 14, fontColor: '#ffe0c0', radius: 12,
+      onClick: () => this.toggleShop()
+    });
 
     // iniciar onda
-    this.startBtn = this.add.container(W - 130, 28);
-    const bg = this.add.rectangle(0,0,200,40, 0x2d5a2a).setStrokeStyle(2, 0x6cbf4c);
-    const txt = this.add.text(0,0,"Iniciar Onda", {fontSize:'18px', color:'#e8ffe0', fontStyle:'bold'}).setOrigin(0.5);
-    this.startBtn.add([bg, txt]).setSize(200,40).setInteractive({useHandCursor:true});
-    this.startBtn.on('pointerover', () => bg.setFillStyle(0x3d7a3a));
-    this.startBtn.on('pointerout',  () => bg.setFillStyle(0x2d5a2a));
-    this.startBtn.on('pointerdown', () => game.events.emit('startWave'));
+    this.startBtn = makeButton(this, W - 130, 28, 200, 40, "Iniciar Onda", {
+      fill: 0x1d4a1a, stroke: 0x6cbf4c, hoverFill: 0x3d7a3a,
+      fontSize: 18, fontColor: '#e8ffe0', radius: 12,
+      onClick: () => game.events.emit('startWave')
+    });
+
 
     // itens
     this.items = {
