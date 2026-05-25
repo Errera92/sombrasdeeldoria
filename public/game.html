@@ -13,6 +13,38 @@
 <body>
 <div id="game"></div>
 <script>
+// =============== BRIDGE COM SHELL REACT (postMessage) ===============
+// Multiplicadores vindos da loja de upgrades (gems). Aplicados aos valores BASE
+// das torres em runtime. Tudo neutro (1.0 / 0) até o shell enviar o bootstrap.
+window.TD_MULT = { damage: 1, range: 1, fireRate: 1, goldBonus: 1, startingGoldBonus: 0 };
+window.TD_PLAYER = { nickname: '', gems: 0 };
+window.TD_POST = function (payload) {
+  try { window.parent && window.parent.postMessage(payload, '*'); } catch (_) {}
+};
+window.addEventListener('message', (ev) => {
+  const d = ev.data;
+  if (!d || typeof d !== 'object') return;
+  if (d.type === 'td:bootstrap' || d.type === 'td:update') {
+    if (d.multipliers) {
+      window.TD_MULT = {
+        damage: +d.multipliers.damage || 1,
+        range: +d.multipliers.range || 1,
+        fireRate: +d.multipliers.fireRate || 1,
+        goldBonus: +d.multipliers.goldBonus || 1,
+        startingGoldBonus: +d.multipliers.startingGoldBonus || 0,
+      };
+    }
+    if (typeof d.nickname === 'string') window.TD_PLAYER.nickname = d.nickname;
+    if (typeof d.gems === 'number') window.TD_PLAYER.gems = d.gems;
+    // Atualiza HUD ao vivo se a UIScene existir
+    try {
+      const game = window.eldoriaGame;
+      const ui = game && game.scene && game.scene.getScene && game.scene.getScene('UIScene');
+      if (ui && ui.refreshPlayerHud) ui.refreshPlayerHud();
+    } catch (_) {}
+  }
+});
+
 // =============== CONSTANTES ===============
 const W = 1280, H = 720;
 
