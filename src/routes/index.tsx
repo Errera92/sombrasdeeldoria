@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -11,13 +12,9 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  return (
-    <div className="h-screen w-screen bg-black">
-      <iframe
-        src="/game.html"
-        title="Sombras de Eldoria"
-        className="h-full w-full border-0"
-      />
-    </div>
-  );
+  const { session, loading } = useAuth();
+  if (loading) {
+    return <div className="h-screen w-screen flex items-center justify-center bg-black text-amber-200 font-serif">Carregando…</div>;
+  }
+  return <Navigate to={session ? "/menu" : "/login"} />;
 }
