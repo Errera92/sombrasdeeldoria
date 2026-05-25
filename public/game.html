@@ -323,7 +323,7 @@ class GameScene extends Phaser.Scene {
     this.waveInProgress = false;
     this.currentWave = 0;
     this.baseHP = 20;
-    this.gold = 150;
+    this.gold = 150 + ((window.TD_MULT && window.TD_MULT.startingGoldBonus) | 0);
     this.state = {
       gold: this.gold, hp: this.baseHP, maxHp: 20,
       wave: this.currentWave, waveActive: this.waveInProgress, enemiesAlive: 0,
@@ -391,6 +391,12 @@ class GameScene extends Phaser.Scene {
   }
 
   exitToGameOver(data) {
+    // Computa score final e avisa o shell para creditar gems / atualizar recorde
+    try {
+      const s = this.state || {};
+      const score = Math.max(0, ((s.wave | 0) * 100) + ((s.gold | 0)) + (data && data.victory ? 500 : 0));
+      window.TD_POST && window.TD_POST({ type: 'td:stageComplete', score, victory: !!(data && data.victory), stage: this.stage && this.stage.name });
+    } catch (_) {}
     this.scene.stop('UIScene');
     this.scene.stop('GameScene');
     this.scene.start('GameOverScene', data);
@@ -842,7 +848,7 @@ class GameScene extends Phaser.Scene {
 
     // torres atiram (escala com speed)
     for (const t of this.towers) {
-      if (time - t.lastFire < t.def.fireRate / this.state.speed) continue;
+      if (time - t.lastFire < t.def.fireRate / (this.state.speed * ((window.TD_MULT && window.TD_MULT.fireRate) || 1))) continue;
       const target = this.findTarget(t);
       if (target) {
         this.fireProjectile(t, target);
@@ -960,7 +966,7 @@ class GameScene extends Phaser.Scene {
     for (const e of this.activeEnemies) {
       if (!e.alive) continue;
       const d = Math.hypot(e.container.x - tower.x, e.container.y - tower.y);
-      if (d <= tower.def.range && e.pathIndex > bestProg) { best = e; bestProg = e.pathIndex; }
+      if (d <= tower.def.range * ((window.TD_MULT && window.TD_MULT.range) || 1) && e.pathIndex > bestProg) { best = e; bestProg = e.pathIndex; }
     }
     return best;
   }
@@ -971,7 +977,7 @@ class GameScene extends Phaser.Scene {
       x: tower.x + fp.x,
       y: tower.y + fp.y,
       target,
-      damage: tower.def.damage,
+      damage: tower.def.damage * ((window.TD_MULT && window.TD_MULT.damage) || 1),
       speed: 540,
       radius: tower.type === 'archer' ? 4 : 6,
       alive: true,
@@ -998,7 +1004,7 @@ class GameScene extends Phaser.Scene {
     if (e.hp <= 0) {
       e.alive = false;
       this.spawnSpark(e.container.x, e.container.y, e.typeDef.spark, 12);
-      this.state.gold += e.reward;
+      this.state.gold += Math.round(e.reward * ((window.TD_MULT && window.TD_MULT.goldBonus) || 1));
       this.state.enemiesAlive--;
       e.container.destroy();
       this.events.emit('stateUpdate', this.state);
