@@ -14,7 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      player_upgrades: {
+        Row: {
+          created_at: string
+          id: string
+          level: number
+          player_id: string
+          updated_at: string
+          upgrade_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level?: number
+          player_id: string
+          updated_at?: string
+          upgrade_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: number
+          player_id?: string
+          updated_at?: string
+          upgrade_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          gems: number
+          high_score: number
+          id: string
+          nickname: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gems?: number
+          high_score?: number
+          id: string
+          nickname: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gems?: number
+          high_score?: number
+          id?: string
+          nickname?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
