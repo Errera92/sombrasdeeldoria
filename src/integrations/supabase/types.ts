@@ -73,7 +73,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_my_rank: {
+        Args: never
+        Returns: {
+          high_score: number
+          nickname: string
+          rank: number
+        }[]
+      }
+      get_top_rankings: {
+        Args: { limit_count?: number }
+        Returns: {
+          high_score: number
+          id: string
+          nickname: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
