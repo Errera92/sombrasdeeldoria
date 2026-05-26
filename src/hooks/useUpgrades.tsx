@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { UPGRADES, computeMultipliers, type UpgradeLevels } from "@/lib/upgrades";
+import { purchaseUpgrade, submitGameResult } from "@/lib/game.functions";
 
 export interface Profile {
   id: string;
@@ -14,6 +16,8 @@ export function useUpgrades(userId: string | undefined) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [levels, setLevels] = useState<UpgradeLevels>({});
   const [loading, setLoading] = useState(true);
+  const purchaseFn = useServerFn(purchaseUpgrade);
+  const submitFn = useServerFn(submitGameResult);
 
   const refresh = useCallback(async () => {
     if (!userId) return;
@@ -30,7 +34,6 @@ export function useUpgrades(userId: string | undefined) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // Realtime profile (gems / high_score)
   useEffect(() => {
     if (!userId) return;
     const ch = supabase
@@ -49,49 +52,29 @@ export function useUpgrades(userId: string | undefined) {
     if (current >= def.maxLevel) { toast.error("Nível máximo atingido"); return; }
     if (profile.gems < def.costPerLevel) { toast.error("Gems insuficientes"); return; }
 
-    // Otimista
-    const prevProfile = profile;
-    const prevLevels = levels;
-    const newLevels = { ...levels, [upgradeId]: current + 1 };
-    setProfile({ ...profile, gems: profile.gems - def.costPerLevel });
-    setLevels(newLevels);
-
-    const { error: upErr } = await supabase.from("player_upgrades").upsert(
-      { player_id: userId, upgrade_id: upgradeId, level: current + 1 },
-      { onConflict: "player_id,upgrade_id" },
-    );
-    const { error: gemsErr } = await supabase
-      .from("profiles")
-      .update({ gems: prevProfile.gems - def.costPerLevel })
-      .eq("id", userId);
-
-    if (upErr || gemsErr) {
-      setProfile(prevProfile);
-      setLevels(prevLevels);
-      toast.error("Falha ao comprar upgrade");
-    } else {
-      toast.success(`${def.name} → nível ${current + 1}`);
+    try {
+      const res = await purchaseFn({ data: { upgradeId } });
+      setProfile({ ...profile, gems: res.gems });
+      setLevels({ ...levels, [upgradeId]: res.level });
+      toast.success(`${def.name} → nível ${res.level}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao comprar upgrade");
     }
-  }, [userId, profile, levels]);
+  }, [userId, profile, levels, purchaseFn]);
 
-  const addGems = useCallback(async (amount: number) => {
-    if (!userId || !profile || amount <= 0) return;
-    const newGems = profile.gems + amount;
-    setProfile({ ...profile, gems: newGems });
-    const { error } = await supabase.from("profiles").update({ gems: newGems }).eq("id", userId);
-    if (error) toast.error("Falha ao salvar gems");
-  }, [userId, profile]);
-
-  const submitScore = useCallback(async (score: number) => {
+  const submitResult = useCallback(async (wave: number, gold: number, victory: boolean) => {
     if (!userId || !profile) return;
-    if (score > profile.high_score) {
-      setProfile({ ...profile, high_score: score });
-      await supabase.from("profiles").update({ high_score: score }).eq("id", userId);
-      toast.success(`Novo recorde: ${score}!`);
+    try {
+      const res = await submitFn({ data: { wave, gold, victory } });
+      setProfile({ ...profile, gems: res.gems, high_score: res.high_score });
+      if (res.earned > 0) toast.success(`+${res.earned} 💎`);
+      if (res.score === res.high_score && res.score > 0) toast.success(`Recorde: ${res.score}!`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao registrar resultado");
     }
-  }, [userId, profile]);
+  }, [userId, profile, submitFn]);
 
   const multipliers = computeMultipliers(levels);
 
-  return { profile, levels, loading, buyUpgrade, addGems, submitScore, multipliers, refresh };
+  return { profile, levels, loading, buyUpgrade, submitResult, multipliers, refresh };
 }
