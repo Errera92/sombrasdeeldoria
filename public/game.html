@@ -279,6 +279,12 @@ class StageSelectScene extends Phaser.Scene {
       desc.setShadow(1,1,'#000',2);
       c.add([title, dif, desc]);
 
+      // hover do card: brilho dourado — adicionado ANTES do botão para não bloquear os cliques
+      const hit = this.add.zone(0, 0, cardW, cardH).setInteractive();
+      hit.on('pointerover', () => drawCard(0xffe88a));
+      hit.on('pointerout',  () => drawCard(0xc9a84c));
+      c.add(hit);
+
       const btn = makeButton(this, 0, cardH/2-40, 200, 50, "Jogar", {
         fill: 0x2d5a2a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
         fontSize: 22, fontColor: '#e8ffe0',
@@ -290,12 +296,6 @@ class StageSelectScene extends Phaser.Scene {
         }
       });
       c.add(btn);
-
-      // hover do card: brilho dourado
-      const hit = this.add.zone(0, 0, cardW, cardH).setInteractive();
-      hit.on('pointerover', () => drawCard(0xffe88a));
-      hit.on('pointerout',  () => drawCard(0xc9a84c));
-      c.add(hit);
       c.sendToBack(cardG);
     });
   }
@@ -1302,4 +1302,4 @@ const config = {
 window.eldoriaGame = new Phaser.Game(config);
 </script>
 </body>
-</html>
+  </html>
