@@ -12,13 +12,12 @@ export const Route = createFileRoute("/play")({
 function PlayPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const { profile, multipliers, addGems, submitScore } = useUpgrades(user?.id);
+  const { profile, multipliers, submitResult } = useUpgrades(user?.id);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const sentBootstrapRef = useRef(false);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [loading, user, navigate]);
 
-  // Push bootstrap config to iframe once both profile & iframe are ready.
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe || !profile || sentBootstrapRef.current) return;
@@ -28,40 +27,37 @@ function PlayPage() {
         nickname: profile.nickname,
         gems: profile.gems,
         multipliers,
-      }, "*");
+      }, window.location.origin);
       sentBootstrapRef.current = true;
     };
-    // Try immediately; also bind to load event in case iframe not ready yet.
     send();
     iframe.addEventListener("load", send);
     return () => iframe.removeEventListener("load", send);
   }, [profile, multipliers]);
 
-  // Keep HUD gems live: forward updates whenever profile.gems changes.
   useEffect(() => {
     if (!profile) return;
     iframeRef.current?.contentWindow?.postMessage({
       type: "td:update", nickname: profile.nickname, gems: profile.gems,
-    }, "*");
+    }, window.location.origin);
   }, [profile?.gems, profile?.nickname]);
 
-  // Listen for game events from the iframe.
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
+      // Only accept messages from our iframe at the same origin
+      if (e.origin !== window.location.origin) return;
+      if (e.source !== iframeRef.current?.contentWindow) return;
       const d = e.data;
       if (!d || typeof d !== "object") return;
       if (d.type === "td:stageComplete") {
-        const score = Math.max(0, d.score | 0);
-        const earned = Math.floor(score / 100);
-        if (earned > 0) addGems(earned);
-        submitScore(score);
+        submitResult(Number(d.wave) | 0, Number(d.gold) | 0, !!d.victory);
       } else if (d.type === "td:exit") {
         navigate({ to: "/menu" });
       }
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [addGems, submitScore, navigate]);
+  }, [submitResult, navigate]);
 
   if (loading || !user) return <div className="h-screen w-screen flex items-center justify-center bg-black text-amber-200">Carregando…</div>;
 

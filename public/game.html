@@ -18,13 +18,17 @@
 // das torres em runtime. Tudo neutro (1.0 / 0) até o shell enviar o bootstrap.
 window.TD_MULT = { damage: 1, range: 1, fireRate: 1, goldBonus: 1, startingGoldBonus: 0 };
 window.TD_PLAYER = { nickname: '', gems: 0 };
+window.TD_PARENT_ORIGIN = '*';
 window.TD_POST = function (payload) {
-  try { window.parent && window.parent.postMessage(payload, '*'); } catch (_) {}
+  try { window.parent && window.parent.postMessage(payload, window.TD_PARENT_ORIGIN || '*'); } catch (_) {}
 };
 window.addEventListener('message', (ev) => {
+  if (ev.source !== window.parent) return;
+  if (ev.origin !== window.location.origin) return;
   const d = ev.data;
   if (!d || typeof d !== 'object') return;
   if (d.type === 'td:bootstrap' || d.type === 'td:update') {
+    window.TD_PARENT_ORIGIN = ev.origin;
     if (d.multipliers) {
       window.TD_MULT = {
         damage: +d.multipliers.damage || 1,
@@ -36,7 +40,6 @@ window.addEventListener('message', (ev) => {
     }
     if (typeof d.nickname === 'string') window.TD_PLAYER.nickname = d.nickname;
     if (typeof d.gems === 'number') window.TD_PLAYER.gems = d.gems;
-    // Atualiza HUD ao vivo se a UIScene existir
     try {
       const game = window.eldoriaGame;
       const ui = game && game.scene && game.scene.getScene && game.scene.getScene('UIScene');
@@ -391,11 +394,16 @@ class GameScene extends Phaser.Scene {
   }
 
   exitToGameOver(data) {
-    // Computa score final e avisa o shell para creditar gems / atualizar recorde
+    // Envia dados brutos — servidor recomputa score/gems
     try {
       const s = this.state || {};
-      const score = Math.max(0, ((s.wave | 0) * 100) + ((s.gold | 0)) + (data && data.victory ? 500 : 0));
-      window.TD_POST && window.TD_POST({ type: 'td:stageComplete', score, victory: !!(data && data.victory), stage: this.stage && this.stage.name });
+      window.TD_POST && window.TD_POST({
+        type: 'td:stageComplete',
+        wave: s.wave | 0,
+        gold: s.gold | 0,
+        victory: !!(data && data.victory),
+        stage: this.stage && this.stage.name,
+      });
     } catch (_) {}
     this.scene.stop('UIScene');
     this.scene.stop('GameScene');

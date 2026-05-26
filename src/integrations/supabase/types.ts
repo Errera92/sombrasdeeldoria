@@ -89,6 +89,22 @@ export type Database = {
           nickname: string
         }[]
       }
+      process_game_result: {
+        Args: { p_gold: number; p_victory: boolean; p_wave: number }
+        Returns: {
+          earned: number
+          gems: number
+          high_score: number
+          score: number
+        }[]
+      }
+      process_upgrade_purchase: {
+        Args: { p_cost: number; p_max_level: number; p_upgrade_id: string }
+        Returns: {
+          gems: number
+          level: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
