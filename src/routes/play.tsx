@@ -73,7 +73,8 @@ function PlayPage() {
         ref={iframeRef}
         src="/game.html"
         title="Sombras de Eldoria"
-        className="flex-1 w-full border-0"
+        className="flex-1 w-full border-0 block mx-auto"
+        style={{ display: "block", margin: "0 auto" }}
       />
     </div>
   );
