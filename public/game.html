@@ -688,8 +688,8 @@ class GameScene extends Phaser.Scene {
       const fang1 = this.add.triangle(-sz*0.12, -sz*0.22, -2,-3, 2,-3, 0,4, 0xffffff);
       const fang2 = this.add.triangle( sz*0.12, -sz*0.22, -2,-3, 2,-3, 0,4, 0xffffff);
       c.add([body, head, eye1, eye2, fang1, fang2]);
-      // animação de corrida
-      this.tweens.add({ targets: c, y: '+=2', yoyo: true, repeat: -1, duration: 180, ease: 'Sine.inOut' });
+      // animação de corrida — anima o body (filho), não o container, para não conflitar com o movimento de path
+      this.tweens.add({ targets: body, y: '+=2', yoyo: true, repeat: -1, duration: 180, ease: 'Sine.inOut' });
 
     } else if (wave.type === 'troll') {
       // corpo quadrado grande
@@ -721,8 +721,8 @@ class GameScene extends Phaser.Scene {
       c.add([halo, body, skull]);
       this.tweens.add({ targets: halo, alpha: 0.1, scale: 1.15, yoyo: true, repeat: -1, duration: 900 });
       this.tweens.add({ targets: body, alpha: 0.45, yoyo: true, repeat: -1, duration: 700 });
-      // flutuação senoidal
-      this.tweens.add({ targets: c, y: '+=4', yoyo: true, repeat: -1, duration: 800, ease: 'Sine.inOut' });
+      // flutuação senoidal — anima o body (filho), não o container, para não conflitar com o movimento de path
+      this.tweens.add({ targets: body, y: '+=4', yoyo: true, repeat: -1, duration: 800, ease: 'Sine.inOut' });
     }
 
     // HP bar arredondada via Graphics
@@ -1302,4 +1302,4 @@ const config = {
 window.eldoriaGame = new Phaser.Game(config);
 </script>
 </body>
-  </html>
+</html>
