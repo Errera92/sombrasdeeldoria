@@ -1404,9 +1404,22 @@ class GameOverScene extends Phaser.Scene {
 
 // =================== CONFIG ===================
 const config = {
-  type: Phaser.CANVAS, parent: 'game', width: W, height: H,
+  type: Phaser.AUTO,
+  parent: 'game',
   backgroundColor: '#0b0d0a',
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: W,
+    height: H,
+    parent: 'game',
+  },
+  render: {
+    antialias: false,
+    pixelArt: false,
+    powerPreference: 'high-performance',
+  },
+  input: { activePointers: 3 },
   scene: [BootScene, StageSelectScene, GameScene, UIScene, GameOverScene],
 };
 window.eldoriaGame = new Phaser.Game(config);
