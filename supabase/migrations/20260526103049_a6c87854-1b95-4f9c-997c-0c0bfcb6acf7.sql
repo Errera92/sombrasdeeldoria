@@ -92,8 +92,10 @@ BEGIN
     RAISE EXCEPTION 'insufficient gems';
   END IF;
 
-  UPDATE public.profiles SET gems = gems - v_cost WHERE id = v_uid
-    RETURNING gems INTO v_gems;
+  UPDATE public.profiles p
+     SET gems = p.gems - v_cost
+   WHERE p.id = v_uid
+  RETURNING p.gems INTO v_gems;
 
   INSERT INTO public.player_upgrades (player_id, upgrade_id, level)
   VALUES (v_uid, p_upgrade_id, v_current + 1)
