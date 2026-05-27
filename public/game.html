@@ -376,7 +376,6 @@ class BootScene extends Phaser.Scene {
 class StageSelectScene extends Phaser.Scene {
   constructor() { super('StageSelectScene'); }
   create() {
-    // gradiente simulado (faixas horizontais do roxo escuro ao preto)
     const bgG = this.add.graphics();
     const bands = 40;
     for (let i=0; i<bands; i++) {
@@ -386,40 +385,37 @@ class StageSelectScene extends Phaser.Scene {
       const b = Math.round(0x24 + (0x08-0x24)*t);
       bgG.fillStyle((r<<16)|(gg<<8)|b, 1).fillRect(0, i*(H/bands), W, Math.ceil(H/bands)+1);
     }
-    // estrelas sutis
     const stars = this.add.graphics();
     for (let i=0;i<140;i++){
       stars.fillStyle(0xc8a8ff, Phaser.Math.FloatBetween(0.1,0.45));
       stars.fillCircle(Phaser.Math.Between(0,W),Phaser.Math.Between(0,H),Phaser.Math.FloatBetween(0.6,1.8));
     }
 
-    // título flutuante
-    const titleC = this.add.container(W/2, 80);
+    const titleC = this.add.container(W/2, 70);
     const t1 = this.add.text(0, 0, "SOMBRAS DE ELDORIA", {
-      fontSize:'58px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'bold'
+      fontSize:'52px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'bold'
     }).setOrigin(0.5);
     t1.setShadow(3, 4, '#000000', 8, true, true);
     const t1b = this.add.text(0, 0, "SOMBRAS DE ELDORIA", {
-      fontSize:'58px', color:'#6a2a8a', fontFamily: FONT_TITLE, fontStyle:'bold'
+      fontSize:'52px', color:'#6a2a8a', fontFamily: FONT_TITLE, fontStyle:'bold'
     }).setOrigin(0.5).setAlpha(0.45);
     t1b.setShadow(0, 0, '#ffaaff', 18, true, true);
     titleC.add([t1b, t1]);
-    this.tweens.add({ targets: titleC, y: 90, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: titleC, y: 80, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.inOut' });
 
-    this.add.text(W/2, 130, "Escolha seu estágio", {
+    this.add.text(W/2, 120, "Escolha o estágio", {
       fontSize:'22px', color:'#d8d2bf', fontFamily: FONT_TITLE, fontStyle:'italic'
     }).setOrigin(0.5).setShadow(2,2,'#000',3);
 
-    const cardW = 360, cardH = 420, gap = 40;
+    const cardW = 220, cardH = 440, gap = 24;
     const totalW = STAGES.length*cardW + (STAGES.length-1)*gap;
     const startX = (W - totalW)/2;
 
     STAGES.forEach((s, i) => {
       const x = startX + i*(cardW+gap);
-      const y = 170;
+      const y = 160;
       const c = this.add.container(x + cardW/2, y + cardH/2);
 
-      // card arredondado com borda dourada
       const cardG = this.add.graphics();
       const drawCard = (gold) => {
         cardG.clear();
@@ -429,50 +425,158 @@ class StageSelectScene extends Phaser.Scene {
       drawCard(0xc9a84c);
       c.add(cardG);
 
-      // mini preview
+      // preview
       const prev = this.add.graphics();
-      prev.fillStyle(s.palette.moss, 1).fillRoundedRect(-cardW/2+16, -cardH/2+50, cardW-32, 200, 10);
-      prev.lineStyle(10, s.palette.pathEdge, 1);
+      prev.fillStyle(s.palette.moss, 1).fillRoundedRect(-cardW/2+12, -cardH/2+96, cardW-24, 130, 10);
+      prev.lineStyle(8, s.palette.pathEdge, 1);
       prev.beginPath();
-      const px = (p) => -cardW/2+16 + (p.x+30)/1340 * (cardW-32);
-      const py = (p) => -cardH/2+50 + (p.y)/720 * 200;
+      const px = (p) => -cardW/2+12 + (p.x+30)/1340 * (cardW-24);
+      const py = (p) => -cardH/2+96 + (p.y)/720 * 130;
       prev.moveTo(px(s.path[0]), py(s.path[0]));
       for (let k=1;k<s.path.length;k++) prev.lineTo(px(s.path[k]), py(s.path[k]));
       prev.strokePath();
-      prev.lineStyle(6, s.palette.path, 1);
+      prev.lineStyle(5, s.palette.path, 1);
       prev.beginPath();
       prev.moveTo(px(s.path[0]), py(s.path[0]));
       for (let k=1;k<s.path.length;k++) prev.lineTo(px(s.path[k]), py(s.path[k]));
       prev.strokePath();
       c.add(prev);
 
-      const title = this.add.text(0, -cardH/2+20, s.name, {
-        fontSize:'24px', color:'#f0e0ff', fontFamily: FONT_TITLE, fontStyle:'bold'
+      const icon = this.add.text(0, -cardH/2+50, s.icon, { fontSize:'36px' }).setOrigin(0.5);
+      const title = this.add.text(0, -cardH/2+18, s.name, {
+        fontSize:'18px', color:'#f0e0ff', fontFamily: FONT_TITLE, fontStyle:'bold', align:'center', wordWrap:{width:cardW-20}
       }).setOrigin(0.5,0);
       title.setShadow(2,2,'#000',4);
-      const stars2 = '★'.repeat(s.difficulty) + '☆'.repeat(3-s.difficulty);
-      const dif = this.add.text(0, -cardH/2+270, stars2, {fontSize:'30px', color:'#ffcc44'}).setOrigin(0.5,0);
+      const theme = this.add.text(0, -cardH/2+240, s.theme, {
+        fontSize:'12px', color:'#c0b89a', fontFamily: FONT_BTN, fontStyle:'italic'
+      }).setOrigin(0.5,0);
+      const stars2 = '★'.repeat(s.baseDifficulty) + '☆'.repeat(5-s.baseDifficulty);
+      const dif = this.add.text(0, -cardH/2+264, stars2, {fontSize:'20px', color:'#ffcc44'}).setOrigin(0.5,0);
       dif.setShadow(2,2,'#000',3);
-      const desc = this.add.text(0, -cardH/2+320,
-        ['Curvas suaves\nIdeal para começar','Zigue-zague agressivo\nInimigos +20% velocidade','Espiral caótica\nWraiths em maioria'][i],
-        {fontSize:'14px', color:'#d8d2bf', align:'center', fontFamily: FONT_BTN}).setOrigin(0.5,0);
-      desc.setShadow(1,1,'#000',2);
-      c.add([title, dif, desc]);
+      const phasesTxt = this.add.text(0, -cardH/2+300, `${s.phases.length} fases`, {
+        fontSize:'14px', color:'#e8d8b0', fontFamily: FONT_BTN
+      }).setOrigin(0.5,0);
+      c.add([icon, title, theme, dif, phasesTxt]);
 
-      // hover do card: brilho dourado — adicionado ANTES do botão para não bloquear os cliques
       const hit = this.add.zone(0, 0, cardW, cardH).setInteractive();
       hit.on('pointerover', () => drawCard(0xffe88a));
       hit.on('pointerout',  () => drawCard(0xc9a84c));
       c.add(hit);
 
-      const btn = makeButton(this, 0, cardH/2-40, 200, 50, "Jogar", {
+      const btn = makeButton(this, 0, cardH/2-36, cardW-40, 46, "Selecionar", {
         fill: 0x2d5a2a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
-        fontSize: 22, fontColor: '#e8ffe0',
+        fontSize: 18, fontColor: '#e8ffe0',
         onClick: () => {
           this.scene.stop('UIScene');
           this.scene.stop('GameScene');
           this.scene.stop('GameOverScene');
-          this.scene.start('GameScene', { stageId: s.id });
+          this.scene.start('PhaseSelectScene', { stageId: s.id });
+        }
+      });
+      c.add(btn);
+      c.sendToBack(cardG);
+    });
+  }
+}
+
+// =================== PHASE SELECT ===================
+class PhaseSelectScene extends Phaser.Scene {
+  constructor() { super('PhaseSelectScene'); }
+  init(data) { this.stageId = data.stageId || 0; }
+  create() {
+    const stage = STAGES[this.stageId];
+    const p = stage.palette;
+
+    // fundo temático
+    const bgG = this.add.graphics();
+    bgG.fillStyle(p.fog, 1).fillRect(0,0,W,H);
+    bgG.fillStyle(p.bg, 1).fillRect(0,80,W,H-80);
+    const stars = this.add.graphics();
+    for (let i=0;i<80;i++){
+      stars.fillStyle(0xffffff, Phaser.Math.FloatBetween(0.05,0.25));
+      stars.fillCircle(Phaser.Math.Between(0,W),Phaser.Math.Between(0,H),Phaser.Math.FloatBetween(0.5,1.5));
+    }
+
+    // título
+    const titleC = this.add.container(W/2, 70);
+    const icon = this.add.text(-220, 0, stage.icon, { fontSize:'52px' }).setOrigin(0.5);
+    const t1 = this.add.text(0, 0, stage.name, {
+      fontSize:'46px', color:'#f0e0ff', fontFamily: FONT_TITLE, fontStyle:'bold'
+    }).setOrigin(0.5);
+    t1.setShadow(3, 4, '#000', 8, true, true);
+    titleC.add([icon, t1]);
+
+    this.add.text(W/2, 120, stage.theme + " — escolha a fase", {
+      fontSize:'18px', color:'#d8d2bf', fontFamily: FONT_TITLE, fontStyle:'italic'
+    }).setOrigin(0.5).setShadow(2,2,'#000',3);
+
+    // botão voltar
+    makeButton(this, 90, 36, 140, 40, "← Estágios", {
+      fill: 0x2a1a3a, stroke: 0xc9a84c, hoverFill: 0x4a2a5a,
+      fontSize: 14, fontColor: '#e8d8ff',
+      onClick: () => { this.scene.start('StageSelectScene'); }
+    });
+
+    // cards de fase
+    const phases = stage.phases;
+    const cardW = 200, cardH = 360, gap = 28;
+    const totalW = phases.length*cardW + (phases.length-1)*gap;
+    const startX = (W - totalW)/2;
+
+    phases.forEach((ph, i) => {
+      const x = startX + i*(cardW+gap);
+      const y = 180;
+      const c = this.add.container(x + cardW/2, y + cardH/2);
+
+      const cardG = this.add.graphics();
+      const drawCard = (border) => {
+        cardG.clear();
+        cardG.fillStyle(p.mossL, 0.85).fillRoundedRect(-cardW/2, -cardH/2, cardW, cardH, 16);
+        cardG.lineStyle(3, border, 1).strokeRoundedRect(-cardW/2, -cardH/2, cardW, cardH, 16);
+      };
+      drawCard(0xc9a84c);
+      c.add(cardG);
+
+      const num = this.add.text(0, -cardH/2+24, `FASE ${i+1}`, {
+        fontSize:'16px', color:'#ffe088', fontFamily: FONT_BTN, fontStyle:'bold'
+      }).setOrigin(0.5,0);
+      const name = this.add.text(0, -cardH/2+50, ph.name, {
+        fontSize:'18px', color:'#fff8e0', fontFamily: FONT_TITLE, fontStyle:'bold',
+        align:'center', wordWrap:{width:cardW-20}
+      }).setOrigin(0.5,0);
+      name.setShadow(2,2,'#000',3);
+
+      // dificuldade combinada
+      const totalDiff = Math.min(5, stage.baseDifficulty + Math.floor(i/2));
+      const stars2 = '★'.repeat(totalDiff) + '☆'.repeat(5-totalDiff);
+      const dif = this.add.text(0, -cardH/2+120, stars2, {fontSize:'18px', color:'#ffcc44'}).setOrigin(0.5,0);
+
+      // preview inimigos
+      const seen = [...new Set(ph.mix)];
+      const enemyTxt = seen.map(t => ENEMY_TYPES[t].name).join('\n');
+      const enemies = this.add.text(0, -cardH/2+160, enemyTxt, {
+        fontSize:'12px', color:'#d8c8a0', fontFamily: FONT_BTN, align:'center'
+      }).setOrigin(0.5,0);
+
+      const waves = this.add.text(0, -cardH/2+265, `${ph.mix.length} ondas`, {
+        fontSize:'13px', color:'#c8b890', fontFamily: FONT_BTN
+      }).setOrigin(0.5,0);
+
+      c.add([num, name, dif, enemies, waves]);
+
+      const hit = this.add.zone(0, 0, cardW, cardH).setInteractive();
+      hit.on('pointerover', () => drawCard(0xffe88a));
+      hit.on('pointerout',  () => drawCard(0xc9a84c));
+      c.add(hit);
+
+      const btn = makeButton(this, 0, cardH/2-32, cardW-30, 44, "Jogar", {
+        fill: 0x2d5a2a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
+        fontSize: 18, fontColor: '#e8ffe0',
+        onClick: () => {
+          this.scene.stop('UIScene');
+          this.scene.stop('GameScene');
+          this.scene.stop('GameOverScene');
+          this.scene.start('GameScene', { stageId: stage.id, phaseId: i });
         }
       });
       c.add(btn);
@@ -487,10 +591,13 @@ class GameScene extends Phaser.Scene {
 
   init(data) {
     this.stage = STAGES[data.stageId || 0];
+    this.phaseId = data.phaseId || 0;
+    this.phase = this.stage.phases[this.phaseId];
     this.PATH = this.stage.path;
     this.SLOTS = this.stage.slots;
-    this.WAVES = buildWaves(this.stage);
+    this.WAVES = buildWaves(this.stage, this.phaseId);
   }
+
 
   create() {
     this.spawnTimer = null;
