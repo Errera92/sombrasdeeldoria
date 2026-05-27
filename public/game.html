@@ -1626,28 +1626,53 @@ class GameOverScene extends Phaser.Scene {
     tt.setShadow(0, 0, glowColor, 20, true, true);
     this.tweens.add({ targets: tt, scale: 1.05, yoyo: true, repeat: -1, duration: 1200, ease: 'Sine.inOut' });
 
+    const phaseLabel = data.phaseName ? ` — ${data.phaseName}` : '';
     const sub = this.add.text(W/2, H/2 - 10,
-      data.victory ? `${data.stage} foi defendida.` : `As trevas tomaram ${data.stage} na onda ${data.wave}.`,
-      { fontSize:'22px', color:'#e8dfc0', fontFamily: FONT_TITLE, fontStyle:'italic' }
+      data.victory ? `${data.stage}${phaseLabel} foi conquistada.` : `As trevas tomaram ${data.stage}${phaseLabel} na onda ${data.wave}.`,
+      { fontSize:'20px', color:'#e8dfc0', fontFamily: FONT_TITLE, fontStyle:'italic', align:'center', wordWrap:{width:W-80} }
     ).setOrigin(0.5);
     sub.setShadow(2,2,'#000',4);
 
-    makeButton(this, W/2 - 130, H/2 + 90, 220, 50, "Selecionar Estágio", {
-      fill: 0x1d4a1a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
-      fontSize: 17, fontColor: '#e8ffe0',
-      onClick: () => {
-        this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
-        this.scene.start('StageSelectScene');
-      }
-    });
-    makeButton(this, W/2 + 130, H/2 + 90, 220, 50, "Jogar Novamente", {
-      fill: 0x3a1a6e, stroke: 0xffd700, hoverFill: 0x5a2aae,
-      fontSize: 17, fontColor: '#ffe8a8',
-      onClick: () => {
-        this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
-        this.scene.start('StageSelectScene');
-      }
-    });
+    const stageId = data.stageId | 0;
+    const phaseId = data.phaseId | 0;
+    const hasNext = !!data.hasNext && data.victory;
+
+    const goSelect = () => {
+      this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
+      this.scene.start('PhaseSelectScene', { stageId });
+    };
+    const replay = () => {
+      this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
+      this.scene.start('GameScene', { stageId, phaseId });
+    };
+    const nextPhase = () => {
+      this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
+      this.scene.start('GameScene', { stageId, phaseId: phaseId + 1 });
+    };
+
+    if (hasNext) {
+      makeButton(this, W/2 - 230, H/2 + 100, 200, 48, "← Fases", {
+        fill: 0x1d4a1a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
+        fontSize: 15, fontColor: '#e8ffe0', onClick: goSelect
+      });
+      makeButton(this, W/2, H/2 + 100, 200, 48, "Jogar Novamente", {
+        fill: 0x3a1a6e, stroke: 0xffd700, hoverFill: 0x5a2aae,
+        fontSize: 15, fontColor: '#ffe8a8', onClick: replay
+      });
+      makeButton(this, W/2 + 230, H/2 + 100, 200, 48, "Próxima Fase →", {
+        fill: 0x6e3a1a, stroke: 0xffe088, hoverFill: 0xae5a2a,
+        fontSize: 15, fontColor: '#ffeac0', onClick: nextPhase
+      });
+    } else {
+      makeButton(this, W/2 - 130, H/2 + 100, 220, 50, "Selecionar Fase", {
+        fill: 0x1d4a1a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
+        fontSize: 17, fontColor: '#e8ffe0', onClick: goSelect
+      });
+      makeButton(this, W/2 + 130, H/2 + 100, 220, 50, "Jogar Novamente", {
+        fill: 0x3a1a6e, stroke: 0xffd700, hoverFill: 0x5a2aae,
+        fontSize: 17, fontColor: '#ffe8a8', onClick: replay
+      });
+    }
   }
 
 }
