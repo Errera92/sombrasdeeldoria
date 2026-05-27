@@ -181,15 +181,21 @@ const TOWER_TYPES = {
 };
 
 const ENEMY_TYPES = {
-  orc:    { name: "Orc",    color: 0x7a3a2a, size: 26, baseHp: 50,  baseSpd: 70,  reward: 8,  spark: 0xff8866 },
-  troll:  { name: "Troll",  color: 0x4a6a3a, size: 34, baseHp: 180, baseSpd: 45,  reward: 18, spark: 0x88ff88 },
-  wraith: { name: "Wraith", color: 0x6a4a8a, size: 24, baseHp: 60,  baseSpd: 110, reward: 14, spark: 0xc89cff, alpha: 0.7 },
+  orc:     { name: "Orc",            color: 0x7a3a2a, size: 26, baseHp: 50,  baseSpd: 70,  reward: 8,  spark: 0xff8866 },
+  troll:   { name: "Troll",          color: 0x4a6a3a, size: 34, baseHp: 180, baseSpd: 45,  reward: 18, spark: 0x88ff88 },
+  wraith:  { name: "Wraith",         color: 0x6a4a8a, size: 24, baseHp: 60,  baseSpd: 110, reward: 14, spark: 0xc89cff, alpha: 0.7 },
+  goblin:  { name: "Goblin Furtivo", color: 0x4a7a3a, size: 22, baseHp: 35,  baseSpd: 135, reward: 6,  spark: 0x88ff66 },
+  golem:   { name: "Golem de Areia", color: 0xc0a060, size: 36, baseHp: 320, baseSpd: 38,  reward: 24, spark: 0xffe088 },
+  imp:     { name: "Diabrete",       color: 0xff5522, size: 22, baseHp: 75,  baseSpd: 125, reward: 12, spark: 0xffaa44 },
+  harpy:   { name: "Harpia",         color: 0xa8c8ff, size: 26, baseHp: 95,  baseSpd: 145, reward: 16, spark: 0xffffff, alpha: 0.85 },
+  demon:   { name: "Demônio Maior",  color: 0x8a1010, size: 32, baseHp: 260, baseSpd: 75,  reward: 26, spark: 0xff4444 },
 };
 
 // === MAPAS ===
+// Cada estágio tem um tema (paleta + path) e 5 fases progressivas.
 const STAGES = [
   {
-    id: 0, name: "Floresta Sombria", difficulty: 1,
+    id: 0, name: "Floresta Sombria", theme: "Bosque amaldiçoado", icon: "🌲", baseDifficulty: 1,
     palette: { bg: 0x14181a, moss: 0x2a3a26, mossL: 0x3d5236, path: 0x3a2e22, pathEdge: 0x241c14, fog: 0x0a1a0a, mtn: 0x1a2a1a },
     speedMul: 1.0,
     path: [
@@ -202,12 +208,39 @@ const STAGES = [
       {x:940,y:240},{x:940,y:440},{x:740,y:420},{x:480,y:420},{x:480,y:600},
       {x:740,y:580},{x:1020,y:540},{x:1020,y:320},
     ],
-    waveMix: ['orc','orc','orc','orc','troll','orc','orc','wraith','troll','orc'],
+    phases: [
+      { name: "Trilha Tranquila",   mix: ['orc','orc','goblin','orc','troll'] },
+      { name: "Caça aos Goblins",   mix: ['goblin','orc','goblin','goblin','troll'] },
+      { name: "Sombra na Mata",     mix: ['orc','wraith','goblin','troll','wraith'] },
+      { name: "Rito Antigo",        mix: ['troll','goblin','wraith','orc','troll'] },
+      { name: "Coração da Floresta",mix: ['wraith','troll','goblin','wraith','demon'] },
+    ],
   },
   {
-    id: 1, name: "Ruínas de Pedra", difficulty: 2,
-    palette: { bg: 0x101418, moss: 0x202830, mossL: 0x303a44, path: 0x3a3a40, pathEdge: 0x1a1a20, fog: 0x0a1218, mtn: 0x1a2230 },
-    speedMul: 1.2,
+    id: 1, name: "Dunas Escaldantes", theme: "Deserto sem fim", icon: "🏜️", baseDifficulty: 2,
+    palette: { bg: 0x3a2a14, moss: 0xb89060, mossL: 0xd6b078, path: 0x6a4a28, pathEdge: 0x3a2010, fog: 0x4a3020, mtn: 0x5a3a1a },
+    speedMul: 1.05,
+    path: [
+      {x:-30,y:200},{x:300,y:200},{x:300,y:480},{x:620,y:480},{x:620,y:200},
+      {x:940,y:200},{x:940,y:560},{x:200,y:560},{x:200,y:660},{x:1310,y:660},
+    ],
+    slots: [
+      {x:160,y:300},{x:160,y:120},{x:440,y:300},{x:460,y:120},{x:760,y:300},
+      {x:780,y:120},{x:1080,y:300},{x:1080,y:120},{x:1080,y:460},{x:560,y:600},
+      {x:760,y:480},{x:340,y:380},
+    ],
+    phases: [
+      { name: "Caravana Perdida",   mix: ['orc','goblin','orc','golem','goblin'] },
+      { name: "Tempestade de Areia",mix: ['goblin','goblin','golem','orc','troll'] },
+      { name: "Sentinelas de Pedra",mix: ['golem','orc','goblin','golem','wraith'] },
+      { name: "Oásis Profanado",    mix: ['goblin','wraith','golem','troll','golem'] },
+      { name: "Tumba do Sultão",    mix: ['golem','wraith','demon','golem','demon'] },
+    ],
+  },
+  {
+    id: 2, name: "Cratera Ígnea", theme: "Vulcão ativo", icon: "🌋", baseDifficulty: 3,
+    palette: { bg: 0x2a0a06, moss: 0x5a1a0a, mossL: 0x7a2a14, path: 0xc04020, pathEdge: 0x5a1408, fog: 0x300a04, mtn: 0x4a1208 },
+    speedMul: 1.15,
     path: [
       {x:-30,y:360},{x:160,y:360},{x:160,y:140},{x:360,y:140},{x:360,y:520},
       {x:560,y:520},{x:560,y:140},{x:760,y:140},{x:760,y:520},{x:960,y:520},
@@ -218,12 +251,39 @@ const STAGES = [
       {x:660,y:240},{x:660,y:440},{x:860,y:240},{x:860,y:440},{x:1060,y:240},
       {x:1060,y:440},{x:1220,y:560},
     ],
-    waveMix: ['orc','orc','troll','orc','wraith','troll','orc','wraith','troll','wraith'],
+    phases: [
+      { name: "Brasas Inquietas",   mix: ['imp','orc','imp','goblin','troll'] },
+      { name: "Rio de Lava",        mix: ['imp','imp','troll','imp','golem'] },
+      { name: "Forja do Caos",      mix: ['troll','imp','golem','imp','demon'] },
+      { name: "Êxodo Flamejante",   mix: ['imp','wraith','imp','golem','demon'] },
+      { name: "Coração do Vulcão",  mix: ['golem','imp','demon','imp','demon'] },
+    ],
   },
   {
-    id: 2, name: "Portão das Trevas", difficulty: 3,
-    palette: { bg: 0x180a14, moss: 0x2a1428, mossL: 0x3a1a34, path: 0x3a1a2a, pathEdge: 0x1a0814, fog: 0x180810, mtn: 0x281024 },
-    speedMul: 1.1,
+    id: 3, name: "Aclive Celeste", theme: "Picos nas nuvens", icon: "☁️", baseDifficulty: 4,
+    palette: { bg: 0x0c1830, moss: 0x4a6a8a, mossL: 0x7090b0, path: 0xc0d8ff, pathEdge: 0x405878, fog: 0x081428, mtn: 0x1a2a4a },
+    speedMul: 1.2,
+    path: [
+      {x:-30,y:520},{x:200,y:520},{x:200,y:340},{x:480,y:340},{x:480,y:560},
+      {x:760,y:560},{x:760,y:200},{x:1040,y:200},{x:1040,y:420},{x:1310,y:420},
+    ],
+    slots: [
+      {x:100,y:420},{x:340,y:240},{x:340,y:440},{x:620,y:240},{x:620,y:460},
+      {x:900,y:300},{x:900,y:500},{x:1180,y:300},{x:1180,y:540},{x:480,y:660},
+      {x:760,y:660},{x:200,y:200},
+    ],
+    phases: [
+      { name: "Brisa do Alto",      mix: ['harpy','goblin','harpy','orc','troll'] },
+      { name: "Ventania",           mix: ['harpy','harpy','imp','harpy','golem'] },
+      { name: "Bando das Nuvens",   mix: ['harpy','wraith','harpy','troll','harpy'] },
+      { name: "Tempestade Etérea",  mix: ['harpy','imp','wraith','harpy','demon'] },
+      { name: "Trono dos Ventos",   mix: ['harpy','demon','harpy','golem','demon'] },
+    ],
+  },
+  {
+    id: 4, name: "Abismo Infernal", theme: "Profundezas do inferno", icon: "🔥", baseDifficulty: 5,
+    palette: { bg: 0x180408, moss: 0x3a0a10, mossL: 0x5a1018, path: 0x6a0808, pathEdge: 0x1a0204, fog: 0x100204, mtn: 0x2a0608 },
+    speedMul: 1.25,
     path: [
       {x:-30,y:360},{x:200,y:360},{x:200,y:200},{x:1080,y:200},{x:1080,y:560},
       {x:340,y:560},{x:340,y:340},{x:900,y:340},{x:900,y:440},{x:540,y:440},{x:540,y:380},{x:740,y:380},
@@ -233,20 +293,29 @@ const STAGES = [
       {x:980,y:620},{x:600,y:620},{x:240,y:480},{x:480,y:280},{x:780,y:280},
       {x:1020,y:380},{x:660,y:480},
     ],
-    waveMix: ['wraith','wraith','orc','wraith','troll','wraith','wraith','troll','wraith','wraith'],
+    phases: [
+      { name: "Portões Ardentes",   mix: ['demon','imp','troll','demon','golem'] },
+      { name: "Legião Sombria",     mix: ['wraith','demon','imp','demon','harpy'] },
+      { name: "Rio Estígio",        mix: ['demon','wraith','golem','demon','wraith'] },
+      { name: "Corte dos Caídos",   mix: ['demon','harpy','demon','imp','demon'] },
+      { name: "Trono do Senhor",    mix: ['demon','demon','golem','demon','demon'] },
+    ],
   },
 ];
 
-function buildWaves(stage) {
+function buildWaves(stage, phaseIndex) {
+  const phase = stage.phases[phaseIndex] || stage.phases[0];
+  const phaseTier = phaseIndex + 1; // 1..5
   const waves = [];
-  for (let i=0; i<10; i++) {
-    const type = stage.waveMix[i];
+  for (let i=0; i<phase.mix.length; i++) {
+    const type = phase.mix[i];
     const t = ENEMY_TYPES[type];
     const tier = i + 1;
-    const count = Math.round(6 + tier*1.6);
-    const hp = Math.round(t.baseHp * (1 + tier*0.25) * (1 + stage.difficulty*0.1));
-    const speed = Math.round(t.baseSpd * stage.speedMul * (1 + tier*0.02));
-    waves.push({ count, hp, speed, interval: Math.max(350, 800 - tier*40), type });
+    const diffScale = 1 + (stage.baseDifficulty - 1)*0.18 + (phaseTier - 1)*0.22;
+    const count = Math.round(6 + tier*1.6 + phaseTier*0.8);
+    const hp = Math.round(t.baseHp * (1 + tier*0.25) * diffScale);
+    const speed = Math.round(t.baseSpd * stage.speedMul * (1 + tier*0.02) * (1 + (phaseTier-1)*0.03));
+    waves.push({ count, hp, speed, interval: Math.max(320, 800 - tier*40 - phaseTier*20), type });
   }
   return waves;
 }
@@ -307,7 +376,6 @@ class BootScene extends Phaser.Scene {
 class StageSelectScene extends Phaser.Scene {
   constructor() { super('StageSelectScene'); }
   create() {
-    // gradiente simulado (faixas horizontais do roxo escuro ao preto)
     const bgG = this.add.graphics();
     const bands = 40;
     for (let i=0; i<bands; i++) {
@@ -317,40 +385,37 @@ class StageSelectScene extends Phaser.Scene {
       const b = Math.round(0x24 + (0x08-0x24)*t);
       bgG.fillStyle((r<<16)|(gg<<8)|b, 1).fillRect(0, i*(H/bands), W, Math.ceil(H/bands)+1);
     }
-    // estrelas sutis
     const stars = this.add.graphics();
     for (let i=0;i<140;i++){
       stars.fillStyle(0xc8a8ff, Phaser.Math.FloatBetween(0.1,0.45));
       stars.fillCircle(Phaser.Math.Between(0,W),Phaser.Math.Between(0,H),Phaser.Math.FloatBetween(0.6,1.8));
     }
 
-    // título flutuante
-    const titleC = this.add.container(W/2, 80);
+    const titleC = this.add.container(W/2, 70);
     const t1 = this.add.text(0, 0, "SOMBRAS DE ELDORIA", {
-      fontSize:'58px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'bold'
+      fontSize:'52px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'bold'
     }).setOrigin(0.5);
     t1.setShadow(3, 4, '#000000', 8, true, true);
     const t1b = this.add.text(0, 0, "SOMBRAS DE ELDORIA", {
-      fontSize:'58px', color:'#6a2a8a', fontFamily: FONT_TITLE, fontStyle:'bold'
+      fontSize:'52px', color:'#6a2a8a', fontFamily: FONT_TITLE, fontStyle:'bold'
     }).setOrigin(0.5).setAlpha(0.45);
     t1b.setShadow(0, 0, '#ffaaff', 18, true, true);
     titleC.add([t1b, t1]);
-    this.tweens.add({ targets: titleC, y: 90, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: titleC, y: 80, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.inOut' });
 
-    this.add.text(W/2, 130, "Escolha seu estágio", {
+    this.add.text(W/2, 120, "Escolha o estágio", {
       fontSize:'22px', color:'#d8d2bf', fontFamily: FONT_TITLE, fontStyle:'italic'
     }).setOrigin(0.5).setShadow(2,2,'#000',3);
 
-    const cardW = 360, cardH = 420, gap = 40;
+    const cardW = 220, cardH = 440, gap = 24;
     const totalW = STAGES.length*cardW + (STAGES.length-1)*gap;
     const startX = (W - totalW)/2;
 
     STAGES.forEach((s, i) => {
       const x = startX + i*(cardW+gap);
-      const y = 170;
+      const y = 160;
       const c = this.add.container(x + cardW/2, y + cardH/2);
 
-      // card arredondado com borda dourada
       const cardG = this.add.graphics();
       const drawCard = (gold) => {
         cardG.clear();
@@ -360,50 +425,158 @@ class StageSelectScene extends Phaser.Scene {
       drawCard(0xc9a84c);
       c.add(cardG);
 
-      // mini preview
+      // preview
       const prev = this.add.graphics();
-      prev.fillStyle(s.palette.moss, 1).fillRoundedRect(-cardW/2+16, -cardH/2+50, cardW-32, 200, 10);
-      prev.lineStyle(10, s.palette.pathEdge, 1);
+      prev.fillStyle(s.palette.moss, 1).fillRoundedRect(-cardW/2+12, -cardH/2+96, cardW-24, 130, 10);
+      prev.lineStyle(8, s.palette.pathEdge, 1);
       prev.beginPath();
-      const px = (p) => -cardW/2+16 + (p.x+30)/1340 * (cardW-32);
-      const py = (p) => -cardH/2+50 + (p.y)/720 * 200;
+      const px = (p) => -cardW/2+12 + (p.x+30)/1340 * (cardW-24);
+      const py = (p) => -cardH/2+96 + (p.y)/720 * 130;
       prev.moveTo(px(s.path[0]), py(s.path[0]));
       for (let k=1;k<s.path.length;k++) prev.lineTo(px(s.path[k]), py(s.path[k]));
       prev.strokePath();
-      prev.lineStyle(6, s.palette.path, 1);
+      prev.lineStyle(5, s.palette.path, 1);
       prev.beginPath();
       prev.moveTo(px(s.path[0]), py(s.path[0]));
       for (let k=1;k<s.path.length;k++) prev.lineTo(px(s.path[k]), py(s.path[k]));
       prev.strokePath();
       c.add(prev);
 
-      const title = this.add.text(0, -cardH/2+20, s.name, {
-        fontSize:'24px', color:'#f0e0ff', fontFamily: FONT_TITLE, fontStyle:'bold'
+      const icon = this.add.text(0, -cardH/2+50, s.icon, { fontSize:'36px' }).setOrigin(0.5);
+      const title = this.add.text(0, -cardH/2+18, s.name, {
+        fontSize:'18px', color:'#f0e0ff', fontFamily: FONT_TITLE, fontStyle:'bold', align:'center', wordWrap:{width:cardW-20}
       }).setOrigin(0.5,0);
       title.setShadow(2,2,'#000',4);
-      const stars2 = '★'.repeat(s.difficulty) + '☆'.repeat(3-s.difficulty);
-      const dif = this.add.text(0, -cardH/2+270, stars2, {fontSize:'30px', color:'#ffcc44'}).setOrigin(0.5,0);
+      const theme = this.add.text(0, -cardH/2+240, s.theme, {
+        fontSize:'12px', color:'#c0b89a', fontFamily: FONT_BTN, fontStyle:'italic'
+      }).setOrigin(0.5,0);
+      const stars2 = '★'.repeat(s.baseDifficulty) + '☆'.repeat(5-s.baseDifficulty);
+      const dif = this.add.text(0, -cardH/2+264, stars2, {fontSize:'20px', color:'#ffcc44'}).setOrigin(0.5,0);
       dif.setShadow(2,2,'#000',3);
-      const desc = this.add.text(0, -cardH/2+320,
-        ['Curvas suaves\nIdeal para começar','Zigue-zague agressivo\nInimigos +20% velocidade','Espiral caótica\nWraiths em maioria'][i],
-        {fontSize:'14px', color:'#d8d2bf', align:'center', fontFamily: FONT_BTN}).setOrigin(0.5,0);
-      desc.setShadow(1,1,'#000',2);
-      c.add([title, dif, desc]);
+      const phasesTxt = this.add.text(0, -cardH/2+300, `${s.phases.length} fases`, {
+        fontSize:'14px', color:'#e8d8b0', fontFamily: FONT_BTN
+      }).setOrigin(0.5,0);
+      c.add([icon, title, theme, dif, phasesTxt]);
 
-      // hover do card: brilho dourado — adicionado ANTES do botão para não bloquear os cliques
       const hit = this.add.zone(0, 0, cardW, cardH).setInteractive();
       hit.on('pointerover', () => drawCard(0xffe88a));
       hit.on('pointerout',  () => drawCard(0xc9a84c));
       c.add(hit);
 
-      const btn = makeButton(this, 0, cardH/2-40, 200, 50, "Jogar", {
+      const btn = makeButton(this, 0, cardH/2-36, cardW-40, 46, "Selecionar", {
         fill: 0x2d5a2a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
-        fontSize: 22, fontColor: '#e8ffe0',
+        fontSize: 18, fontColor: '#e8ffe0',
         onClick: () => {
           this.scene.stop('UIScene');
           this.scene.stop('GameScene');
           this.scene.stop('GameOverScene');
-          this.scene.start('GameScene', { stageId: s.id });
+          this.scene.start('PhaseSelectScene', { stageId: s.id });
+        }
+      });
+      c.add(btn);
+      c.sendToBack(cardG);
+    });
+  }
+}
+
+// =================== PHASE SELECT ===================
+class PhaseSelectScene extends Phaser.Scene {
+  constructor() { super('PhaseSelectScene'); }
+  init(data) { this.stageId = data.stageId || 0; }
+  create() {
+    const stage = STAGES[this.stageId];
+    const p = stage.palette;
+
+    // fundo temático
+    const bgG = this.add.graphics();
+    bgG.fillStyle(p.fog, 1).fillRect(0,0,W,H);
+    bgG.fillStyle(p.bg, 1).fillRect(0,80,W,H-80);
+    const stars = this.add.graphics();
+    for (let i=0;i<80;i++){
+      stars.fillStyle(0xffffff, Phaser.Math.FloatBetween(0.05,0.25));
+      stars.fillCircle(Phaser.Math.Between(0,W),Phaser.Math.Between(0,H),Phaser.Math.FloatBetween(0.5,1.5));
+    }
+
+    // título
+    const titleC = this.add.container(W/2, 70);
+    const icon = this.add.text(-220, 0, stage.icon, { fontSize:'52px' }).setOrigin(0.5);
+    const t1 = this.add.text(0, 0, stage.name, {
+      fontSize:'46px', color:'#f0e0ff', fontFamily: FONT_TITLE, fontStyle:'bold'
+    }).setOrigin(0.5);
+    t1.setShadow(3, 4, '#000', 8, true, true);
+    titleC.add([icon, t1]);
+
+    this.add.text(W/2, 120, stage.theme + " — escolha a fase", {
+      fontSize:'18px', color:'#d8d2bf', fontFamily: FONT_TITLE, fontStyle:'italic'
+    }).setOrigin(0.5).setShadow(2,2,'#000',3);
+
+    // botão voltar
+    makeButton(this, 90, 36, 140, 40, "← Estágios", {
+      fill: 0x2a1a3a, stroke: 0xc9a84c, hoverFill: 0x4a2a5a,
+      fontSize: 14, fontColor: '#e8d8ff',
+      onClick: () => { this.scene.start('StageSelectScene'); }
+    });
+
+    // cards de fase
+    const phases = stage.phases;
+    const cardW = 200, cardH = 360, gap = 28;
+    const totalW = phases.length*cardW + (phases.length-1)*gap;
+    const startX = (W - totalW)/2;
+
+    phases.forEach((ph, i) => {
+      const x = startX + i*(cardW+gap);
+      const y = 180;
+      const c = this.add.container(x + cardW/2, y + cardH/2);
+
+      const cardG = this.add.graphics();
+      const drawCard = (border) => {
+        cardG.clear();
+        cardG.fillStyle(p.mossL, 0.85).fillRoundedRect(-cardW/2, -cardH/2, cardW, cardH, 16);
+        cardG.lineStyle(3, border, 1).strokeRoundedRect(-cardW/2, -cardH/2, cardW, cardH, 16);
+      };
+      drawCard(0xc9a84c);
+      c.add(cardG);
+
+      const num = this.add.text(0, -cardH/2+24, `FASE ${i+1}`, {
+        fontSize:'16px', color:'#ffe088', fontFamily: FONT_BTN, fontStyle:'bold'
+      }).setOrigin(0.5,0);
+      const name = this.add.text(0, -cardH/2+50, ph.name, {
+        fontSize:'18px', color:'#fff8e0', fontFamily: FONT_TITLE, fontStyle:'bold',
+        align:'center', wordWrap:{width:cardW-20}
+      }).setOrigin(0.5,0);
+      name.setShadow(2,2,'#000',3);
+
+      // dificuldade combinada
+      const totalDiff = Math.min(5, stage.baseDifficulty + Math.floor(i/2));
+      const stars2 = '★'.repeat(totalDiff) + '☆'.repeat(5-totalDiff);
+      const dif = this.add.text(0, -cardH/2+120, stars2, {fontSize:'18px', color:'#ffcc44'}).setOrigin(0.5,0);
+
+      // preview inimigos
+      const seen = [...new Set(ph.mix)];
+      const enemyTxt = seen.map(t => ENEMY_TYPES[t].name).join('\n');
+      const enemies = this.add.text(0, -cardH/2+160, enemyTxt, {
+        fontSize:'12px', color:'#d8c8a0', fontFamily: FONT_BTN, align:'center'
+      }).setOrigin(0.5,0);
+
+      const waves = this.add.text(0, -cardH/2+265, `${ph.mix.length} ondas`, {
+        fontSize:'13px', color:'#c8b890', fontFamily: FONT_BTN
+      }).setOrigin(0.5,0);
+
+      c.add([num, name, dif, enemies, waves]);
+
+      const hit = this.add.zone(0, 0, cardW, cardH).setInteractive();
+      hit.on('pointerover', () => drawCard(0xffe88a));
+      hit.on('pointerout',  () => drawCard(0xc9a84c));
+      c.add(hit);
+
+      const btn = makeButton(this, 0, cardH/2-32, cardW-30, 44, "Jogar", {
+        fill: 0x2d5a2a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
+        fontSize: 18, fontColor: '#e8ffe0',
+        onClick: () => {
+          this.scene.stop('UIScene');
+          this.scene.stop('GameScene');
+          this.scene.stop('GameOverScene');
+          this.scene.start('GameScene', { stageId: stage.id, phaseId: i });
         }
       });
       c.add(btn);
@@ -418,10 +591,13 @@ class GameScene extends Phaser.Scene {
 
   init(data) {
     this.stage = STAGES[data.stageId || 0];
+    this.phaseId = data.phaseId || 0;
+    this.phase = this.stage.phases[this.phaseId];
     this.PATH = this.stage.path;
     this.SLOTS = this.stage.slots;
-    this.WAVES = buildWaves(this.stage);
+    this.WAVES = buildWaves(this.stage, this.phaseId);
   }
+
 
   create() {
     this.spawnTimer = null;
@@ -505,7 +681,6 @@ class GameScene extends Phaser.Scene {
   }
 
   exitToGameOver(data) {
-    // Envia dados brutos — servidor recomputa score/gems
     try {
       const s = this.state || {};
       window.TD_POST && window.TD_POST({
@@ -514,11 +689,18 @@ class GameScene extends Phaser.Scene {
         gold: s.gold | 0,
         victory: !!(data && data.victory),
         stage: this.stage && this.stage.name,
+        phase: this.phase && this.phase.name,
       });
     } catch (_) {}
+    const payload = Object.assign({}, data, {
+      stageId: this.stage.id,
+      phaseId: this.phaseId,
+      phaseName: this.phase && this.phase.name,
+      hasNext: this.phaseId < this.stage.phases.length - 1,
+    });
     this.scene.stop('UIScene');
     this.scene.stop('GameScene');
-    this.scene.start('GameOverScene', data);
+    this.scene.start('GameOverScene', payload);
   }
 
   // ---------- arte ----------
@@ -821,10 +1003,8 @@ class GameScene extends Phaser.Scene {
       // pisada pesada
       this.tweens.add({ targets: c, scaleY: 0.95, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.inOut' });
 
-    } else {
-      // wraith — aura externa sfumada
+    } else if (wave.type === 'wraith') {
       const halo = this.add.ellipse(0, -2, sz*1.6, sz*1.9, 0x6a3a8a, 0.25);
-      // corpo etéreo
       body = this.add.ellipse(0, -3, sz, sz*1.25, 0x4a1a6a).setStrokeStyle(2, 0x8a4abf);
       body.setAlpha(0.75);
       const skull = this.add.text(0, -4, "☠", { fontSize:'14px', color:'#e8d8ff' }).setOrigin(0.5);
@@ -832,9 +1012,78 @@ class GameScene extends Phaser.Scene {
       c.add([halo, body, skull]);
       this.tweens.add({ targets: halo, alpha: 0.1, scale: 1.15, yoyo: true, repeat: -1, duration: 900 });
       this.tweens.add({ targets: body, alpha: 0.45, yoyo: true, repeat: -1, duration: 700 });
-      // flutuação senoidal — anima o body (filho), não o container, para não conflitar com o movimento de path
       this.tweens.add({ targets: body, y: '+=4', yoyo: true, repeat: -1, duration: 800, ease: 'Sine.inOut' });
+
+    } else if (wave.type === 'goblin') {
+      // goblin pequeno e rápido, verde claro
+      body = this.add.ellipse(0, 2, sz*0.85, sz*0.95, 0x6aa845).setStrokeStyle(2, 0x2a4a18);
+      const head = this.add.circle(0, -sz*0.35, sz*0.35, 0x80c050).setStrokeStyle(2, 0x2a4a18);
+      const ear1 = this.add.triangle(-sz*0.35, -sz*0.45, 0,0, 8,-8, 4,6, 0x6aa845).setStrokeStyle(1, 0x2a4a18);
+      const ear2 = this.add.triangle( sz*0.35, -sz*0.45, 0,0, -8,-8, -4,6, 0x6aa845).setStrokeStyle(1, 0x2a4a18);
+      const eye1 = this.add.circle(-sz*0.13, -sz*0.35, 2, 0xffff00);
+      const eye2 = this.add.circle( sz*0.13, -sz*0.35, 2, 0xffff00);
+      c.add([body, head, ear1, ear2, eye1, eye2]);
+      this.tweens.add({ targets: body, scaleY: 0.88, yoyo: true, repeat: -1, duration: 140, ease: 'Sine.inOut' });
+
+    } else if (wave.type === 'golem') {
+      // golem de areia, blocos pedregosos
+      body = this.add.rectangle(0, 2, sz*1.1, sz*1.15, 0xb8945a).setStrokeStyle(3, 0x5a3a18);
+      const head = this.add.rectangle(0, -sz*0.5, sz*0.6, sz*0.5, 0xd0a868).setStrokeStyle(2, 0x5a3a18);
+      const crack = this.add.graphics();
+      crack.lineStyle(2, 0x6a4a20, 0.8);
+      crack.beginPath(); crack.moveTo(-sz*0.3, -sz*0.1); crack.lineTo(0, sz*0.1); crack.lineTo(sz*0.25, 0); crack.strokePath();
+      const eye1 = this.add.circle(-sz*0.12, -sz*0.5, 2.5, 0xffaa22);
+      const eye2 = this.add.circle( sz*0.12, -sz*0.5, 2.5, 0xffaa22);
+      c.add([body, head, crack, eye1, eye2]);
+      this.tweens.add({ targets: c, scaleY: 0.96, yoyo: true, repeat: -1, duration: 520, ease: 'Sine.inOut' });
+
+    } else if (wave.type === 'imp') {
+      // diabrete flamejante
+      const flame = this.add.ellipse(0, -2, sz*1.4, sz*1.6, 0xff4400, 0.35);
+      body = this.add.ellipse(0, 2, sz*0.9, sz*1.0, 0xc02a10).setStrokeStyle(2, 0x4a0a00);
+      const horn1 = this.add.triangle(-sz*0.2, -sz*0.5, 0,0, 4,-10, -4,-2, 0x2a0a00);
+      const horn2 = this.add.triangle( sz*0.2, -sz*0.5, 0,0, -4,-10, 4,-2, 0x2a0a00);
+      const eye1 = this.add.circle(-sz*0.15, -sz*0.25, 2.5, 0xffee00);
+      const eye2 = this.add.circle( sz*0.15, -sz*0.25, 2.5, 0xffee00);
+      c.add([flame, body, horn1, horn2, eye1, eye2]);
+      this.tweens.add({ targets: flame, alpha: 0.15, scale: 1.2, yoyo: true, repeat: -1, duration: 350 });
+      this.tweens.add({ targets: body, y: '+=2', yoyo: true, repeat: -1, duration: 200, ease: 'Sine.inOut' });
+
+    } else if (wave.type === 'harpy') {
+      // harpia voadora — asas
+      const wingL = this.add.triangle(-sz*0.7, -sz*0.1, 0,0, sz*0.7,-sz*0.2, sz*0.7,sz*0.3, 0xa8c8ff).setStrokeStyle(2, 0x405878);
+      const wingR = this.add.triangle( sz*0.7, -sz*0.1, 0,0, -sz*0.7,-sz*0.2, -sz*0.7,sz*0.3, 0xa8c8ff).setStrokeStyle(2, 0x405878);
+      body = this.add.ellipse(0, 0, sz*0.7, sz*0.95, 0xc0d8ff).setStrokeStyle(2, 0x405878);
+      const head = this.add.circle(0, -sz*0.45, sz*0.3, 0xe0e8ff).setStrokeStyle(2, 0x405878);
+      const beak = this.add.triangle(0, -sz*0.38, -2,0, 2,0, 0,7, 0xffaa44);
+      const eye1 = this.add.circle(-sz*0.08, -sz*0.5, 1.8, 0x000);
+      const eye2 = this.add.circle( sz*0.08, -sz*0.5, 1.8, 0x000);
+      c.add([wingL, wingR, body, head, beak, eye1, eye2]);
+      this.tweens.add({ targets: [wingL, wingR], scaleY: 0.55, yoyo: true, repeat: -1, duration: 220, ease: 'Sine.inOut' });
+      this.tweens.add({ targets: body, y: '-=5', yoyo: true, repeat: -1, duration: 600, ease: 'Sine.inOut' });
+
+    } else if (wave.type === 'demon') {
+      // demônio maior — vermelho com chifres e olhos brilhantes
+      const aura = this.add.ellipse(0, 0, sz*1.5, sz*1.7, 0xff0000, 0.18);
+      body = this.add.ellipse(0, 2, sz*1.0, sz*1.15, 0x6a0a0a).setStrokeStyle(3, 0x2a0000);
+      const head = this.add.circle(0, -sz*0.45, sz*0.42, 0x8a1010).setStrokeStyle(2, 0x2a0000);
+      const horn1 = this.add.triangle(-sz*0.28, -sz*0.62, 0,0, 6,-14, -3,-3, 0x1a0000);
+      const horn2 = this.add.triangle( sz*0.28, -sz*0.62, 0,0, -6,-14, 3,-3, 0x1a0000);
+      const eye1 = this.add.circle(-sz*0.15, -sz*0.45, 3, 0xffee00);
+      const eye2 = this.add.circle( sz*0.15, -sz*0.45, 3, 0xffee00);
+      eye1.setStrokeStyle(1, 0xff0000); eye2.setStrokeStyle(1, 0xff0000);
+      const fang1 = this.add.triangle(-sz*0.1, -sz*0.28, -2,-4, 2,-4, 0,6, 0xffffff);
+      const fang2 = this.add.triangle( sz*0.1, -sz*0.28, -2,-4, 2,-4, 0,6, 0xffffff);
+      c.add([aura, body, head, horn1, horn2, eye1, eye2, fang1, fang2]);
+      this.tweens.add({ targets: aura, alpha: 0.08, scale: 1.2, yoyo: true, repeat: -1, duration: 700 });
+      this.tweens.add({ targets: c, scaleY: 0.97, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.inOut' });
+
+    } else {
+      // fallback genérico
+      body = this.add.circle(0, 0, sz*0.5, t.color).setStrokeStyle(2, 0x000);
+      c.add(body);
     }
+
 
     // HP bar arredondada via Graphics
     const hpW = sz + 8, hpH = 6, hpY = -sz/2 - 10;
@@ -1167,7 +1416,10 @@ class UIScene extends Phaser.Scene {
     this.goldText  = this.add.text(160, 18, "Ouro: 150",  {fontSize:'20px', color:'#ffcc44', fontFamily: FONT_BTN, fontStyle:'bold'});
     this.waveText  = this.add.text(340, 18, "Onda: 0/10", {fontSize:'20px', color:'#e8e0c8', fontFamily: FONT_BTN, fontStyle:'bold'});
     [this.hpText, this.goldText, this.waveText].forEach(t => t.setShadow(2,2,'#000000',3));
-    this.title = this.add.text(W/2, 8, STAGES[this.stageId].name, {fontSize:'18px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'italic'}).setOrigin(0.5,0);
+    const _stage = STAGES[this.stageId];
+    const _phaseName = this.gameScene && this.gameScene.phase ? this.gameScene.phase.name : '';
+    const _titleStr = _phaseName ? `${_stage.icon} ${_stage.name} — ${_phaseName}` : `${_stage.icon} ${_stage.name}`;
+    this.title = this.add.text(W/2, 8, _titleStr, {fontSize:'16px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'italic'}).setOrigin(0.5,0);
     this.title.setShadow(2,2,'#000000',4);
 
     // botão velocidade
@@ -1377,28 +1629,53 @@ class GameOverScene extends Phaser.Scene {
     tt.setShadow(0, 0, glowColor, 20, true, true);
     this.tweens.add({ targets: tt, scale: 1.05, yoyo: true, repeat: -1, duration: 1200, ease: 'Sine.inOut' });
 
+    const phaseLabel = data.phaseName ? ` — ${data.phaseName}` : '';
     const sub = this.add.text(W/2, H/2 - 10,
-      data.victory ? `${data.stage} foi defendida.` : `As trevas tomaram ${data.stage} na onda ${data.wave}.`,
-      { fontSize:'22px', color:'#e8dfc0', fontFamily: FONT_TITLE, fontStyle:'italic' }
+      data.victory ? `${data.stage}${phaseLabel} foi conquistada.` : `As trevas tomaram ${data.stage}${phaseLabel} na onda ${data.wave}.`,
+      { fontSize:'20px', color:'#e8dfc0', fontFamily: FONT_TITLE, fontStyle:'italic', align:'center', wordWrap:{width:W-80} }
     ).setOrigin(0.5);
     sub.setShadow(2,2,'#000',4);
 
-    makeButton(this, W/2 - 130, H/2 + 90, 220, 50, "Selecionar Estágio", {
-      fill: 0x1d4a1a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
-      fontSize: 17, fontColor: '#e8ffe0',
-      onClick: () => {
-        this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
-        this.scene.start('StageSelectScene');
-      }
-    });
-    makeButton(this, W/2 + 130, H/2 + 90, 220, 50, "Jogar Novamente", {
-      fill: 0x3a1a6e, stroke: 0xffd700, hoverFill: 0x5a2aae,
-      fontSize: 17, fontColor: '#ffe8a8',
-      onClick: () => {
-        this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
-        this.scene.start('StageSelectScene');
-      }
-    });
+    const stageId = data.stageId | 0;
+    const phaseId = data.phaseId | 0;
+    const hasNext = !!data.hasNext && data.victory;
+
+    const goSelect = () => {
+      this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
+      this.scene.start('PhaseSelectScene', { stageId });
+    };
+    const replay = () => {
+      this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
+      this.scene.start('GameScene', { stageId, phaseId });
+    };
+    const nextPhase = () => {
+      this.scene.stop('GameOverScene'); this.scene.stop('UIScene'); this.scene.stop('GameScene');
+      this.scene.start('GameScene', { stageId, phaseId: phaseId + 1 });
+    };
+
+    if (hasNext) {
+      makeButton(this, W/2 - 230, H/2 + 100, 200, 48, "← Fases", {
+        fill: 0x1d4a1a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
+        fontSize: 15, fontColor: '#e8ffe0', onClick: goSelect
+      });
+      makeButton(this, W/2, H/2 + 100, 200, 48, "Jogar Novamente", {
+        fill: 0x3a1a6e, stroke: 0xffd700, hoverFill: 0x5a2aae,
+        fontSize: 15, fontColor: '#ffe8a8', onClick: replay
+      });
+      makeButton(this, W/2 + 230, H/2 + 100, 200, 48, "Próxima Fase →", {
+        fill: 0x6e3a1a, stroke: 0xffe088, hoverFill: 0xae5a2a,
+        fontSize: 15, fontColor: '#ffeac0', onClick: nextPhase
+      });
+    } else {
+      makeButton(this, W/2 - 130, H/2 + 100, 220, 50, "Selecionar Fase", {
+        fill: 0x1d4a1a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
+        fontSize: 17, fontColor: '#e8ffe0', onClick: goSelect
+      });
+      makeButton(this, W/2 + 130, H/2 + 100, 220, 50, "Jogar Novamente", {
+        fill: 0x3a1a6e, stroke: 0xffd700, hoverFill: 0x5a2aae,
+        fontSize: 17, fontColor: '#ffe8a8', onClick: replay
+      });
+    }
   }
 
 }
@@ -1421,7 +1698,7 @@ const config = {
     powerPreference: 'high-performance',
   },
   input: { activePointers: 3 },
-  scene: [BootScene, StageSelectScene, GameScene, UIScene, GameOverScene],
+  scene: [BootScene, StageSelectScene, PhaseSelectScene, GameScene, UIScene, GameOverScene],
 };
 window.eldoriaGame = new Phaser.Game(config);
 </script>
