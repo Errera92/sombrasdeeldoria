@@ -1416,7 +1416,10 @@ class UIScene extends Phaser.Scene {
     this.goldText  = this.add.text(160, 18, "Ouro: 150",  {fontSize:'20px', color:'#ffcc44', fontFamily: FONT_BTN, fontStyle:'bold'});
     this.waveText  = this.add.text(340, 18, "Onda: 0/10", {fontSize:'20px', color:'#e8e0c8', fontFamily: FONT_BTN, fontStyle:'bold'});
     [this.hpText, this.goldText, this.waveText].forEach(t => t.setShadow(2,2,'#000000',3));
-    this.title = this.add.text(W/2, 8, STAGES[this.stageId].name, {fontSize:'18px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'italic'}).setOrigin(0.5,0);
+    const _stage = STAGES[this.stageId];
+    const _phaseName = this.gameScene && this.gameScene.phase ? this.gameScene.phase.name : '';
+    const _titleStr = _phaseName ? `${_stage.icon} ${_stage.name} — ${_phaseName}` : `${_stage.icon} ${_stage.name}`;
+    this.title = this.add.text(W/2, 8, _titleStr, {fontSize:'16px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'italic'}).setOrigin(0.5,0);
     this.title.setShadow(2,2,'#000000',4);
 
     // botão velocidade
