@@ -681,7 +681,6 @@ class GameScene extends Phaser.Scene {
   }
 
   exitToGameOver(data) {
-    // Envia dados brutos — servidor recomputa score/gems
     try {
       const s = this.state || {};
       window.TD_POST && window.TD_POST({
@@ -690,11 +689,18 @@ class GameScene extends Phaser.Scene {
         gold: s.gold | 0,
         victory: !!(data && data.victory),
         stage: this.stage && this.stage.name,
+        phase: this.phase && this.phase.name,
       });
     } catch (_) {}
+    const payload = Object.assign({}, data, {
+      stageId: this.stage.id,
+      phaseId: this.phaseId,
+      phaseName: this.phase && this.phase.name,
+      hasNext: this.phaseId < this.stage.phases.length - 1,
+    });
     this.scene.stop('UIScene');
     this.scene.stop('GameScene');
-    this.scene.start('GameOverScene', data);
+    this.scene.start('GameOverScene', payload);
   }
 
   // ---------- arte ----------
