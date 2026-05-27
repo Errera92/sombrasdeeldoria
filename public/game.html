@@ -1003,10 +1003,8 @@ class GameScene extends Phaser.Scene {
       // pisada pesada
       this.tweens.add({ targets: c, scaleY: 0.95, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.inOut' });
 
-    } else {
-      // wraith — aura externa sfumada
+    } else if (wave.type === 'wraith') {
       const halo = this.add.ellipse(0, -2, sz*1.6, sz*1.9, 0x6a3a8a, 0.25);
-      // corpo etéreo
       body = this.add.ellipse(0, -3, sz, sz*1.25, 0x4a1a6a).setStrokeStyle(2, 0x8a4abf);
       body.setAlpha(0.75);
       const skull = this.add.text(0, -4, "☠", { fontSize:'14px', color:'#e8d8ff' }).setOrigin(0.5);
@@ -1014,9 +1012,78 @@ class GameScene extends Phaser.Scene {
       c.add([halo, body, skull]);
       this.tweens.add({ targets: halo, alpha: 0.1, scale: 1.15, yoyo: true, repeat: -1, duration: 900 });
       this.tweens.add({ targets: body, alpha: 0.45, yoyo: true, repeat: -1, duration: 700 });
-      // flutuação senoidal — anima o body (filho), não o container, para não conflitar com o movimento de path
       this.tweens.add({ targets: body, y: '+=4', yoyo: true, repeat: -1, duration: 800, ease: 'Sine.inOut' });
+
+    } else if (wave.type === 'goblin') {
+      // goblin pequeno e rápido, verde claro
+      body = this.add.ellipse(0, 2, sz*0.85, sz*0.95, 0x6aa845).setStrokeStyle(2, 0x2a4a18);
+      const head = this.add.circle(0, -sz*0.35, sz*0.35, 0x80c050).setStrokeStyle(2, 0x2a4a18);
+      const ear1 = this.add.triangle(-sz*0.35, -sz*0.45, 0,0, 8,-8, 4,6, 0x6aa845).setStrokeStyle(1, 0x2a4a18);
+      const ear2 = this.add.triangle( sz*0.35, -sz*0.45, 0,0, -8,-8, -4,6, 0x6aa845).setStrokeStyle(1, 0x2a4a18);
+      const eye1 = this.add.circle(-sz*0.13, -sz*0.35, 2, 0xffff00);
+      const eye2 = this.add.circle( sz*0.13, -sz*0.35, 2, 0xffff00);
+      c.add([body, head, ear1, ear2, eye1, eye2]);
+      this.tweens.add({ targets: body, scaleY: 0.88, yoyo: true, repeat: -1, duration: 140, ease: 'Sine.inOut' });
+
+    } else if (wave.type === 'golem') {
+      // golem de areia, blocos pedregosos
+      body = this.add.rectangle(0, 2, sz*1.1, sz*1.15, 0xb8945a).setStrokeStyle(3, 0x5a3a18);
+      const head = this.add.rectangle(0, -sz*0.5, sz*0.6, sz*0.5, 0xd0a868).setStrokeStyle(2, 0x5a3a18);
+      const crack = this.add.graphics();
+      crack.lineStyle(2, 0x6a4a20, 0.8);
+      crack.beginPath(); crack.moveTo(-sz*0.3, -sz*0.1); crack.lineTo(0, sz*0.1); crack.lineTo(sz*0.25, 0); crack.strokePath();
+      const eye1 = this.add.circle(-sz*0.12, -sz*0.5, 2.5, 0xffaa22);
+      const eye2 = this.add.circle( sz*0.12, -sz*0.5, 2.5, 0xffaa22);
+      c.add([body, head, crack, eye1, eye2]);
+      this.tweens.add({ targets: c, scaleY: 0.96, yoyo: true, repeat: -1, duration: 520, ease: 'Sine.inOut' });
+
+    } else if (wave.type === 'imp') {
+      // diabrete flamejante
+      const flame = this.add.ellipse(0, -2, sz*1.4, sz*1.6, 0xff4400, 0.35);
+      body = this.add.ellipse(0, 2, sz*0.9, sz*1.0, 0xc02a10).setStrokeStyle(2, 0x4a0a00);
+      const horn1 = this.add.triangle(-sz*0.2, -sz*0.5, 0,0, 4,-10, -4,-2, 0x2a0a00);
+      const horn2 = this.add.triangle( sz*0.2, -sz*0.5, 0,0, -4,-10, 4,-2, 0x2a0a00);
+      const eye1 = this.add.circle(-sz*0.15, -sz*0.25, 2.5, 0xffee00);
+      const eye2 = this.add.circle( sz*0.15, -sz*0.25, 2.5, 0xffee00);
+      c.add([flame, body, horn1, horn2, eye1, eye2]);
+      this.tweens.add({ targets: flame, alpha: 0.15, scale: 1.2, yoyo: true, repeat: -1, duration: 350 });
+      this.tweens.add({ targets: body, y: '+=2', yoyo: true, repeat: -1, duration: 200, ease: 'Sine.inOut' });
+
+    } else if (wave.type === 'harpy') {
+      // harpia voadora — asas
+      const wingL = this.add.triangle(-sz*0.7, -sz*0.1, 0,0, sz*0.7,-sz*0.2, sz*0.7,sz*0.3, 0xa8c8ff).setStrokeStyle(2, 0x405878);
+      const wingR = this.add.triangle( sz*0.7, -sz*0.1, 0,0, -sz*0.7,-sz*0.2, -sz*0.7,sz*0.3, 0xa8c8ff).setStrokeStyle(2, 0x405878);
+      body = this.add.ellipse(0, 0, sz*0.7, sz*0.95, 0xc0d8ff).setStrokeStyle(2, 0x405878);
+      const head = this.add.circle(0, -sz*0.45, sz*0.3, 0xe0e8ff).setStrokeStyle(2, 0x405878);
+      const beak = this.add.triangle(0, -sz*0.38, -2,0, 2,0, 0,7, 0xffaa44);
+      const eye1 = this.add.circle(-sz*0.08, -sz*0.5, 1.8, 0x000);
+      const eye2 = this.add.circle( sz*0.08, -sz*0.5, 1.8, 0x000);
+      c.add([wingL, wingR, body, head, beak, eye1, eye2]);
+      this.tweens.add({ targets: [wingL, wingR], scaleY: 0.55, yoyo: true, repeat: -1, duration: 220, ease: 'Sine.inOut' });
+      this.tweens.add({ targets: body, y: '-=5', yoyo: true, repeat: -1, duration: 600, ease: 'Sine.inOut' });
+
+    } else if (wave.type === 'demon') {
+      // demônio maior — vermelho com chifres e olhos brilhantes
+      const aura = this.add.ellipse(0, 0, sz*1.5, sz*1.7, 0xff0000, 0.18);
+      body = this.add.ellipse(0, 2, sz*1.0, sz*1.15, 0x6a0a0a).setStrokeStyle(3, 0x2a0000);
+      const head = this.add.circle(0, -sz*0.45, sz*0.42, 0x8a1010).setStrokeStyle(2, 0x2a0000);
+      const horn1 = this.add.triangle(-sz*0.28, -sz*0.62, 0,0, 6,-14, -3,-3, 0x1a0000);
+      const horn2 = this.add.triangle( sz*0.28, -sz*0.62, 0,0, -6,-14, 3,-3, 0x1a0000);
+      const eye1 = this.add.circle(-sz*0.15, -sz*0.45, 3, 0xffee00);
+      const eye2 = this.add.circle( sz*0.15, -sz*0.45, 3, 0xffee00);
+      eye1.setStrokeStyle(1, 0xff0000); eye2.setStrokeStyle(1, 0xff0000);
+      const fang1 = this.add.triangle(-sz*0.1, -sz*0.28, -2,-4, 2,-4, 0,6, 0xffffff);
+      const fang2 = this.add.triangle( sz*0.1, -sz*0.28, -2,-4, 2,-4, 0,6, 0xffffff);
+      c.add([aura, body, head, horn1, horn2, eye1, eye2, fang1, fang2]);
+      this.tweens.add({ targets: aura, alpha: 0.08, scale: 1.2, yoyo: true, repeat: -1, duration: 700 });
+      this.tweens.add({ targets: c, scaleY: 0.97, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.inOut' });
+
+    } else {
+      // fallback genérico
+      body = this.add.circle(0, 0, sz*0.5, t.color).setStrokeStyle(2, 0x000);
+      c.add(body);
     }
+
 
     // HP bar arredondada via Graphics
     const hpW = sz + 8, hpH = 6, hpY = -sz/2 - 10;
