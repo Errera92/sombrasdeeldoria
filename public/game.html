@@ -834,12 +834,12 @@ class GameScene extends Phaser.Scene {
   // ---------- arte ----------
   drawBackground() {
     const p = this.stage.palette;
+    if (!this._mapGfx) this._mapGfx = [];
     const g = this.add.graphics();
-    // céu/fog gradient simulado
     g.fillStyle(p.fog,1).fillRect(0,0,W,H);
     g.fillStyle(p.bg,1).fillRect(0,80,W,H-80);
+    this._mapGfx.push(g);
 
-    // parallax: 2 camadas de montanhas distantes
     const m1 = this.add.graphics();
     m1.fillStyle(p.mtn, 0.55);
     this.drawMountains(m1, 180, 80, 6);
@@ -847,8 +847,8 @@ class GameScene extends Phaser.Scene {
     m2.fillStyle(p.mtn, 0.85);
     this.drawMountains(m2, 230, 60, 8);
     this.parallax1 = m1; this.parallax2 = m2;
+    this._mapGfx.push(m1, m2);
 
-    // grama com textura pontilhada
     const grass = this.add.graphics();
     for (let i=0;i<260;i++){
       grass.fillStyle(p.moss, Phaser.Math.FloatBetween(0.18,0.4));
@@ -858,6 +858,7 @@ class GameScene extends Phaser.Scene {
       grass.fillStyle(p.mossL, Phaser.Math.FloatBetween(0.2,0.5));
       grass.fillCircle(Phaser.Math.Between(0,W), Phaser.Math.Between(0,H), Phaser.Math.Between(2,5));
     }
+    this._mapGfx.push(grass);
   }
   drawMountains(g, baseY, h, n) {
     const step = W/n;
@@ -875,12 +876,12 @@ class GameScene extends Phaser.Scene {
 
   drawPath() {
     const p = this.stage.palette;
+    if (!this._mapGfx) this._mapGfx = [];
     const g = this.add.graphics();
     g.lineStyle(56, p.pathEdge, 1);
     this.strokePath(g);
     g.lineStyle(46, p.path, 1);
     this.strokePath(g);
-    // tile pedras pontilhadas
     g.fillStyle(0x000000, 0.2);
     for (let i=0;i<this.PATH.length-1;i++){
       const a=this.PATH[i], b=this.PATH[i+1];
@@ -893,6 +894,7 @@ class GameScene extends Phaser.Scene {
         g.fillCircle(x,y,Phaser.Math.Between(2,4));
       }
     }
+    this._mapGfx.push(g);
   }
   strokePath(g) {
     g.beginPath();
