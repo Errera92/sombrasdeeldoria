@@ -1695,8 +1695,21 @@ class UIScene extends Phaser.Scene {
   refresh(s) {
     this.hpText.setText(`HP: ${s.hp}`);
     this.goldText.setText(`Ouro: ${s.gold}`);
-    this.waveText.setText(`Onda: ${s.wave} / ${s.totalWaves}`);
+    const phaseStr = s.totalPhases ? `  ·  Fase: ${s.phase}/${s.totalPhases}` : '';
+    this.waveText.setText(`Onda: ${s.wave} / ${s.totalWaves}${phaseStr}`);
     this.startBtn.setAlpha(s.waveActive ? 0.4 : 1);
+  }
+
+  updateStageTitle() {
+    if (!this.title) return;
+    const stage = STAGES[this.stageId];
+    const phaseName = this.gameScene && this.gameScene.phase ? this.gameScene.phase.name : '';
+    const phaseNum = this.gameScene && typeof this.gameScene.phaseId === 'number'
+      ? ` (${this.gameScene.phaseId + 1}/${stage.phases.length})` : '';
+    const str = phaseName
+      ? `${stage.icon} ${stage.name} — ${phaseName}${phaseNum}`
+      : `${stage.icon} ${stage.name}`;
+    this.title.setText(str);
   }
 
   showBuildMenu(x, y, onPick) {
