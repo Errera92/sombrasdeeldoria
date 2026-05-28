@@ -1450,9 +1450,29 @@ class GameScene extends Phaser.Scene {
       this.state.waveActive = false;
       this.state.gold += 25; // bônus de onda
       if (this.state.wave >= this.WAVES.length) {
-        this.state.victory = true;
-        this.events.emit('stateUpdate', this.state);
-        this.exitToGameOver({ victory: true, wave: this.state.wave, stage: this.stage.name });
+        // Fase concluída
+        const hasNextPhase = this.phaseId < this.stage.phases.length - 1;
+        if (hasNextPhase) {
+          // reporta progresso parcial e avança fase em sequência (sem recriar a cena)
+          try {
+            window.TD_POST && window.TD_POST({
+              type: 'td:stageComplete',
+              wave: this.state.wave | 0,
+              gold: this.state.gold | 0,
+              victory: true,
+              stage: this.stage.name,
+              phase: this.phase && this.phase.name,
+              partial: true,
+            });
+          } catch (_) {}
+          this.events.emit('stateUpdate', this.state);
+          this.time.delayedCall(800, () => this.loadPhase(this.phaseId + 1));
+        } else {
+          // última fase: vitória total
+          this.state.victory = true;
+          this.events.emit('stateUpdate', this.state);
+          this.exitToGameOver({ victory: true, wave: this.state.wave, stage: this.stage.name });
+        }
       } else {
         this.events.emit('stateUpdate', this.state);
       }
