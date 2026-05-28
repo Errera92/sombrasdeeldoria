@@ -669,8 +669,8 @@ class GameScene extends Phaser.Scene {
     this.stage = STAGES[data.stageId || 0];
     this.phaseId = data.phaseId || 0;
     this.phase = this.stage.phases[this.phaseId];
-    this.PATH = this.stage.path;
-    this.SLOTS = this.stage.slots;
+    this.PATH = this.phase.path || this.stage.path;
+    this.SLOTS = this.phase.slots || this.stage.slots;
     this.WAVES = buildWaves(this.stage, this.phaseId);
   }
 
@@ -685,6 +685,7 @@ class GameScene extends Phaser.Scene {
     this.projectiles = null;
     this.towerGroup = null;
     this.slotGroup = null;
+    this._mapGfx = [];
     this.gameOver = false;
     this.waveInProgress = false;
     this.currentWave = 0;
@@ -695,6 +696,7 @@ class GameScene extends Phaser.Scene {
       wave: this.currentWave, waveActive: this.waveInProgress, enemiesAlive: 0,
       gameOver: this.gameOver, victory: false,
       stageName: this.stage.name, totalWaves: this.WAVES.length,
+      phase: this.phaseId + 1, totalPhases: this.stage.phases.length,
       speed: 1, freezeUntil: 0, wallUntil: 0,
     };
     this.handleSpeedChange = this.handleSpeedChange.bind(this);
@@ -720,6 +722,56 @@ class GameScene extends Phaser.Scene {
     this.events.on('startWave', this.startWave, this);
     this.events.on('useItem', this.useItem, this);
     this.events.on('setSpeed', this.handleSpeedChange, this);
+  }
+
+  // Recarrega uma nova fase sem reiniciar a cena: limpa mapa, inimigos,
+  // torres e slots, e redesenha tudo com o novo path/slots.
+  loadPhase(phaseIndex) {
+    this.phaseId = phaseIndex;
+    this.phase = this.stage.phases[phaseIndex];
+    this.PATH = this.phase.path || this.stage.path;
+    this.SLOTS = this.phase.slots || this.stage.slots;
+    this.WAVES = buildWaves(this.stage, phaseIndex);
+
+    // limpa entidades dinâmicas
+    if (this.spawnTimer) { try { this.spawnTimer.remove(false); } catch(_){} this.spawnTimer = null; }
+    for (const e of this.activeEnemies) if (e.container && e.container.scene) e.container.destroy();
+    for (const p of this.activeProjectiles) if (p.gfx && p.gfx.scene) p.gfx.destroy();
+    this.activeEnemies = [];
+    this.activeProjectiles = [];
+    if (this.projectileLayer && this.projectileLayer.scene) this.projectileLayer.clear();
+
+    // limpa torres e slots (novas posições)
+    for (const t of this.towers) if (t.container && t.container.scene) t.container.destroy();
+    this.towers = [];
+    for (const s of this.slots) if (s.container && s.container.scene) s.container.destroy();
+    this.slots = [];
+
+    // limpa mapa (bg, caminho, base)
+    for (const g of (this._mapGfx || [])) if (g && g.scene) g.destroy();
+    this._mapGfx = [];
+    if (this.baseSprite && this.baseSprite.scene) { this.baseSprite.destroy(); this.baseSprite = null; }
+
+    // redesenha
+    this.drawBackground();
+    this.drawPath();
+    this.drawBase();
+    this.createSlots();
+
+    // reset de estado de onda mantendo HP/ouro
+    this.currentWave = 0;
+    this.state.wave = 0;
+    this.state.waveActive = false;
+    this.state.victory = false;
+    this.state.enemiesAlive = 0;
+    this.state.totalWaves = this.WAVES.length;
+    this.state.phase = phaseIndex + 1;
+    this.state.totalPhases = this.stage.phases.length;
+    this.state.stageName = this.stage.name;
+
+    const ui = this.scene.get('UIScene');
+    if (ui && ui.updateStageTitle) ui.updateStageTitle();
+    this.events.emit('stateUpdate', this.state);
   }
 
   handleSpeedChange(v) {
