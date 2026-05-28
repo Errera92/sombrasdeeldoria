@@ -193,129 +193,205 @@ const ENEMY_TYPES = {
 
 // === MAPAS ===
 // Cada estágio tem um tema (paleta + path) e 5 fases progressivas.
+// =============== TEMPLATES DE FASE (path + slots únicos) ===============
+// Cada fase de cada estágio recebe uma destas 5 geometrias distintas.
+// Canvas 1280x720. Start fora do canvas à esquerda, end saindo pela direita.
+const PHASE_LAYOUTS = [
+  // 0) Zigue-zague horizontal
+  {
+    shape: 'zigzag',
+    path: [
+      {x:-30,y:110},{x:1120,y:110},{x:1120,y:240},{x:180,y:240},
+      {x:180,y:380},{x:1120,y:380},{x:1120,y:520},{x:180,y:520},
+      {x:180,y:640},{x:1310,y:640},
+    ],
+    slots: [
+      {x:300,y:50},{x:600,y:50},{x:900,y:50},
+      {x:300,y:175},{x:600,y:175},{x:900,y:175},
+      {x:300,y:310},{x:600,y:310},{x:900,y:310},
+      {x:300,y:450},{x:600,y:450},{x:900,y:450},
+      {x:1180,y:585},{x:600,y:580},
+    ],
+  },
+  // 1) Espiral
+  {
+    shape: 'spiral',
+    path: [
+      {x:-30,y:360},{x:160,y:360},{x:160,y:100},{x:1140,y:100},
+      {x:1140,y:620},{x:340,y:620},{x:340,y:260},{x:960,y:260},
+      {x:960,y:480},{x:540,y:480},{x:540,y:360},{x:1310,y:360},
+    ],
+    slots: [
+      {x:80,y:230},{x:80,y:500},{x:640,y:40},{x:1220,y:230},
+      {x:1220,y:500},{x:720,y:680},{x:240,y:430},{x:520,y:190},
+      {x:820,y:190},{x:1040,y:380},{x:720,y:580},{x:440,y:430},
+      {x:760,y:420},
+    ],
+  },
+  // 2) U invertido
+  {
+    shape: 'u',
+    path: [
+      {x:-30,y:600},{x:200,y:600},{x:200,y:140},
+      {x:1080,y:140},{x:1080,y:600},{x:1310,y:600},
+    ],
+    slots: [
+      {x:100,y:440},{x:340,y:260},{x:340,y:460},
+      {x:520,y:60},{x:760,y:60},
+      {x:940,y:260},{x:940,y:460},{x:1180,y:440},
+      {x:640,y:260},{x:640,y:440},
+      {x:80,y:680},{x:1200,y:680},{x:640,y:680},
+    ],
+  },
+  // 3) S serpentina
+  {
+    shape: 's',
+    path: [
+      {x:-30,y:160},{x:920,y:160},{x:920,y:380},
+      {x:280,y:380},{x:280,y:580},{x:1310,y:580},
+    ],
+    slots: [
+      {x:220,y:60},{x:520,y:60},{x:820,y:60},
+      {x:1120,y:260},{x:760,y:260},{x:440,y:260},
+      {x:140,y:280},{x:140,y:480},{x:500,y:480},
+      {x:780,y:480},{x:1080,y:480},
+      {x:520,y:680},{x:880,y:680},{x:1180,y:680},
+    ],
+  },
+  // 4) L duplo
+  {
+    shape: 'doubleL',
+    path: [
+      {x:-30,y:140},{x:420,y:140},{x:420,y:440},
+      {x:820,y:440},{x:820,y:140},{x:1100,y:140},
+      {x:1100,y:600},{x:520,y:600},{x:520,y:680},{x:1310,y:680},
+    ],
+    slots: [
+      {x:200,y:60},{x:300,y:280},{x:520,y:280},
+      {x:620,y:340},{x:720,y:340},{x:920,y:280},
+      {x:980,y:60},{x:1200,y:380},{x:1200,y:540},
+      {x:680,y:520},{x:380,y:520},{x:380,y:680},
+      {x:880,y:540},{x:1000,y:680},
+    ],
+  },
+];
+
+// Mistura de inimigos por estágio×fase (5 ondas cada).
+const PHASE_MIXES = [
+  // Floresta
+  [
+    { name: "Trilha Tranquila",     mix: ['orc','orc','goblin','orc','troll'] },
+    { name: "Caça aos Goblins",     mix: ['goblin','orc','goblin','goblin','troll'] },
+    { name: "Sombra na Mata",       mix: ['orc','wraith','goblin','troll','wraith'] },
+    { name: "Rito Antigo",          mix: ['troll','goblin','wraith','orc','troll'] },
+    { name: "Coração da Floresta",  mix: ['wraith','troll','goblin','wraith','demon'] },
+  ],
+  // Deserto
+  [
+    { name: "Caravana Perdida",     mix: ['orc','goblin','orc','golem','goblin'] },
+    { name: "Tempestade de Areia",  mix: ['goblin','goblin','golem','orc','troll'] },
+    { name: "Sentinelas de Pedra",  mix: ['golem','orc','goblin','golem','wraith'] },
+    { name: "Oásis Profanado",      mix: ['goblin','wraith','golem','troll','golem'] },
+    { name: "Tumba do Sultão",      mix: ['golem','wraith','demon','golem','demon'] },
+  ],
+  // Vulcão
+  [
+    { name: "Brasas Inquietas",     mix: ['imp','orc','imp','goblin','troll'] },
+    { name: "Rio de Lava",          mix: ['imp','imp','troll','imp','golem'] },
+    { name: "Forja do Caos",        mix: ['troll','imp','golem','imp','demon'] },
+    { name: "Êxodo Flamejante",     mix: ['imp','wraith','imp','golem','demon'] },
+    { name: "Coração do Vulcão",    mix: ['golem','imp','demon','imp','demon'] },
+  ],
+  // Céu
+  [
+    { name: "Brisa do Alto",        mix: ['harpy','goblin','harpy','orc','troll'] },
+    { name: "Ventania",             mix: ['harpy','harpy','imp','harpy','golem'] },
+    { name: "Bando das Nuvens",     mix: ['harpy','wraith','harpy','troll','harpy'] },
+    { name: "Tempestade Etérea",    mix: ['harpy','imp','wraith','harpy','demon'] },
+    { name: "Trono dos Ventos",     mix: ['harpy','demon','harpy','golem','demon'] },
+  ],
+  // Inferno
+  [
+    { name: "Portões Ardentes",     mix: ['demon','imp','troll','demon','golem'] },
+    { name: "Legião Sombria",       mix: ['wraith','demon','imp','demon','harpy'] },
+    { name: "Rio Estígio",          mix: ['demon','wraith','golem','demon','wraith'] },
+    { name: "Corte dos Caídos",     mix: ['demon','harpy','demon','imp','demon'] },
+    { name: "Trono do Senhor",      mix: ['demon','demon','golem','demon','demon'] },
+  ],
+];
+
+// Embaralha a ordem dos 5 layouts por estágio (determinístico via seed = stageId)
+// para garantir que cada estágio tenha as 5 geometrias, na ordem única.
+function phaseLayoutOrder(stageId) {
+  const order = [0,1,2,3,4];
+  // rotação pelo stageId para variar a ordem entre estágios
+  const k = stageId % 5;
+  return order.slice(k).concat(order.slice(0, k));
+}
+
+function buildStagePhases(stageId) {
+  const order = phaseLayoutOrder(stageId);
+  const mixes = PHASE_MIXES[stageId] || PHASE_MIXES[0];
+  return mixes.map((m, i) => {
+    const layout = PHASE_LAYOUTS[order[i]];
+    return {
+      name: m.name,
+      mix: m.mix,
+      shape: layout.shape,
+      path: layout.path.map(p => ({ x: p.x, y: p.y })),
+      slots: layout.slots.map(p => ({ x: p.x, y: p.y })),
+    };
+  });
+}
+
 const STAGES = [
   {
     id: 0, name: "Floresta Sombria", theme: "Bosque amaldiçoado", icon: "🌲", baseDifficulty: 1,
     palette: { bg: 0x14181a, moss: 0x2a3a26, mossL: 0x3d5236, path: 0x3a2e22, pathEdge: 0x241c14, fog: 0x0a1a0a, mtn: 0x1a2a1a },
     speedMul: 1.0,
-    path: [
-      {x:-30,y:120},{x:240,y:120},{x:240,y:320},{x:540,y:320},{x:540,y:140},
-      {x:840,y:140},{x:840,y:500},{x:380,y:500},{x:380,y:620},{x:1100,y:620},
-      {x:1100,y:380},{x:1220,y:380},
-    ],
-    slots: [
-      {x:140,y:220},{x:340,y:220},{x:440,y:240},{x:640,y:220},{x:740,y:240},
-      {x:940,y:240},{x:940,y:440},{x:740,y:420},{x:480,y:420},{x:480,y:600},
-      {x:740,y:580},{x:1020,y:540},{x:1020,y:320},
-    ],
-    phases: [
-      { name: "Trilha Tranquila",   mix: ['orc','orc','goblin','orc','troll'] },
-      { name: "Caça aos Goblins",   mix: ['goblin','orc','goblin','goblin','troll'] },
-      { name: "Sombra na Mata",     mix: ['orc','wraith','goblin','troll','wraith'] },
-      { name: "Rito Antigo",        mix: ['troll','goblin','wraith','orc','troll'] },
-      { name: "Coração da Floresta",mix: ['wraith','troll','goblin','wraith','demon'] },
-    ],
   },
   {
     id: 1, name: "Dunas Escaldantes", theme: "Deserto sem fim", icon: "🏜️", baseDifficulty: 2,
     palette: { bg: 0x3a2a14, moss: 0xb89060, mossL: 0xd6b078, path: 0x6a4a28, pathEdge: 0x3a2010, fog: 0x4a3020, mtn: 0x5a3a1a },
     speedMul: 1.05,
-    path: [
-      {x:-30,y:200},{x:300,y:200},{x:300,y:480},{x:620,y:480},{x:620,y:200},
-      {x:940,y:200},{x:940,y:560},{x:200,y:560},{x:200,y:660},{x:1310,y:660},
-    ],
-    slots: [
-      {x:160,y:300},{x:160,y:120},{x:440,y:300},{x:460,y:120},{x:760,y:300},
-      {x:780,y:120},{x:1080,y:300},{x:1080,y:120},{x:1080,y:460},{x:560,y:600},
-      {x:760,y:480},{x:340,y:380},
-    ],
-    phases: [
-      { name: "Caravana Perdida",   mix: ['orc','goblin','orc','golem','goblin'] },
-      { name: "Tempestade de Areia",mix: ['goblin','goblin','golem','orc','troll'] },
-      { name: "Sentinelas de Pedra",mix: ['golem','orc','goblin','golem','wraith'] },
-      { name: "Oásis Profanado",    mix: ['goblin','wraith','golem','troll','golem'] },
-      { name: "Tumba do Sultão",    mix: ['golem','wraith','demon','golem','demon'] },
-    ],
   },
   {
     id: 2, name: "Cratera Ígnea", theme: "Vulcão ativo", icon: "🌋", baseDifficulty: 3,
     palette: { bg: 0x2a0a06, moss: 0x5a1a0a, mossL: 0x7a2a14, path: 0xc04020, pathEdge: 0x5a1408, fog: 0x300a04, mtn: 0x4a1208 },
     speedMul: 1.15,
-    path: [
-      {x:-30,y:360},{x:160,y:360},{x:160,y:140},{x:360,y:140},{x:360,y:520},
-      {x:560,y:520},{x:560,y:140},{x:760,y:140},{x:760,y:520},{x:960,y:520},
-      {x:960,y:140},{x:1160,y:140},{x:1160,y:400},{x:1310,y:400},
-    ],
-    slots: [
-      {x:80,y:240},{x:260,y:240},{x:260,y:440},{x:460,y:240},{x:460,y:440},
-      {x:660,y:240},{x:660,y:440},{x:860,y:240},{x:860,y:440},{x:1060,y:240},
-      {x:1060,y:440},{x:1220,y:560},
-    ],
-    phases: [
-      { name: "Brasas Inquietas",   mix: ['imp','orc','imp','goblin','troll'] },
-      { name: "Rio de Lava",        mix: ['imp','imp','troll','imp','golem'] },
-      { name: "Forja do Caos",      mix: ['troll','imp','golem','imp','demon'] },
-      { name: "Êxodo Flamejante",   mix: ['imp','wraith','imp','golem','demon'] },
-      { name: "Coração do Vulcão",  mix: ['golem','imp','demon','imp','demon'] },
-    ],
   },
   {
     id: 3, name: "Aclive Celeste", theme: "Picos nas nuvens", icon: "☁️", baseDifficulty: 4,
     palette: { bg: 0x0c1830, moss: 0x4a6a8a, mossL: 0x7090b0, path: 0xc0d8ff, pathEdge: 0x405878, fog: 0x081428, mtn: 0x1a2a4a },
     speedMul: 1.2,
-    path: [
-      {x:-30,y:520},{x:200,y:520},{x:200,y:340},{x:480,y:340},{x:480,y:560},
-      {x:760,y:560},{x:760,y:200},{x:1040,y:200},{x:1040,y:420},{x:1310,y:420},
-    ],
-    slots: [
-      {x:100,y:420},{x:340,y:240},{x:340,y:440},{x:620,y:240},{x:620,y:460},
-      {x:900,y:300},{x:900,y:500},{x:1180,y:300},{x:1180,y:540},{x:480,y:660},
-      {x:760,y:660},{x:200,y:200},
-    ],
-    phases: [
-      { name: "Brisa do Alto",      mix: ['harpy','goblin','harpy','orc','troll'] },
-      { name: "Ventania",           mix: ['harpy','harpy','imp','harpy','golem'] },
-      { name: "Bando das Nuvens",   mix: ['harpy','wraith','harpy','troll','harpy'] },
-      { name: "Tempestade Etérea",  mix: ['harpy','imp','wraith','harpy','demon'] },
-      { name: "Trono dos Ventos",   mix: ['harpy','demon','harpy','golem','demon'] },
-    ],
   },
   {
     id: 4, name: "Abismo Infernal", theme: "Profundezas do inferno", icon: "🔥", baseDifficulty: 5,
     palette: { bg: 0x180408, moss: 0x3a0a10, mossL: 0x5a1018, path: 0x6a0808, pathEdge: 0x1a0204, fog: 0x100204, mtn: 0x2a0608 },
     speedMul: 1.25,
-    path: [
-      {x:-30,y:360},{x:200,y:360},{x:200,y:200},{x:1080,y:200},{x:1080,y:560},
-      {x:340,y:560},{x:340,y:340},{x:900,y:340},{x:900,y:440},{x:540,y:440},{x:540,y:380},{x:740,y:380},
-    ],
-    slots: [
-      {x:140,y:280},{x:300,y:130},{x:600,y:130},{x:900,y:130},{x:1180,y:380},
-      {x:980,y:620},{x:600,y:620},{x:240,y:480},{x:480,y:280},{x:780,y:280},
-      {x:1020,y:380},{x:660,y:480},
-    ],
-    phases: [
-      { name: "Portões Ardentes",   mix: ['demon','imp','troll','demon','golem'] },
-      { name: "Legião Sombria",     mix: ['wraith','demon','imp','demon','harpy'] },
-      { name: "Rio Estígio",        mix: ['demon','wraith','golem','demon','wraith'] },
-      { name: "Corte dos Caídos",   mix: ['demon','harpy','demon','imp','demon'] },
-      { name: "Trono do Senhor",    mix: ['demon','demon','golem','demon','demon'] },
-    ],
   },
 ];
+// Injeta as 5 fases (com path/slots únicos) em cada estágio.
+STAGES.forEach(s => {
+  s.phases = buildStagePhases(s.id);
+  // mantém compat: path/slots padrão = fase 1
+  s.path = s.phases[0].path;
+  s.slots = s.phases[0].slots;
+});
 
 function buildWaves(stage, phaseIndex) {
   const phase = stage.phases[phaseIndex] || stage.phases[0];
-  const phaseTier = phaseIndex + 1; // 1..5
+  const phaseScale = 1 + 0.15 * phaseIndex; // multiplicador progressivo por fase
   const waves = [];
   for (let i=0; i<phase.mix.length; i++) {
     const type = phase.mix[i];
     const t = ENEMY_TYPES[type];
     const tier = i + 1;
-    const diffScale = 1 + (stage.baseDifficulty - 1)*0.18 + (phaseTier - 1)*0.22;
-    const count = Math.round(6 + tier*1.6 + phaseTier*0.8);
-    const hp = Math.round(t.baseHp * (1 + tier*0.25) * diffScale);
-    const speed = Math.round(t.baseSpd * stage.speedMul * (1 + tier*0.02) * (1 + (phaseTier-1)*0.03));
-    waves.push({ count, hp, speed, interval: Math.max(320, 800 - tier*40 - phaseTier*20), type });
+    const stageScale = 1 + (stage.baseDifficulty - 1) * 0.18;
+    const count = Math.round(6 + tier*1.6 + phaseIndex*0.8);
+    const hp = Math.round(t.baseHp * (1 + tier*0.25) * stageScale * phaseScale);
+    const speed = Math.round(t.baseSpd * stage.speedMul * (1 + tier*0.02) * phaseScale);
+    waves.push({ count, hp, speed, interval: Math.max(320, 800 - tier*40 - phaseIndex*20), type });
   }
   return waves;
 }
@@ -593,8 +669,8 @@ class GameScene extends Phaser.Scene {
     this.stage = STAGES[data.stageId || 0];
     this.phaseId = data.phaseId || 0;
     this.phase = this.stage.phases[this.phaseId];
-    this.PATH = this.stage.path;
-    this.SLOTS = this.stage.slots;
+    this.PATH = this.phase.path || this.stage.path;
+    this.SLOTS = this.phase.slots || this.stage.slots;
     this.WAVES = buildWaves(this.stage, this.phaseId);
   }
 
@@ -609,6 +685,7 @@ class GameScene extends Phaser.Scene {
     this.projectiles = null;
     this.towerGroup = null;
     this.slotGroup = null;
+    this._mapGfx = [];
     this.gameOver = false;
     this.waveInProgress = false;
     this.currentWave = 0;
@@ -619,6 +696,7 @@ class GameScene extends Phaser.Scene {
       wave: this.currentWave, waveActive: this.waveInProgress, enemiesAlive: 0,
       gameOver: this.gameOver, victory: false,
       stageName: this.stage.name, totalWaves: this.WAVES.length,
+      phase: this.phaseId + 1, totalPhases: this.stage.phases.length,
       speed: 1, freezeUntil: 0, wallUntil: 0,
     };
     this.handleSpeedChange = this.handleSpeedChange.bind(this);
@@ -644,6 +722,56 @@ class GameScene extends Phaser.Scene {
     this.events.on('startWave', this.startWave, this);
     this.events.on('useItem', this.useItem, this);
     this.events.on('setSpeed', this.handleSpeedChange, this);
+  }
+
+  // Recarrega uma nova fase sem reiniciar a cena: limpa mapa, inimigos,
+  // torres e slots, e redesenha tudo com o novo path/slots.
+  loadPhase(phaseIndex) {
+    this.phaseId = phaseIndex;
+    this.phase = this.stage.phases[phaseIndex];
+    this.PATH = this.phase.path || this.stage.path;
+    this.SLOTS = this.phase.slots || this.stage.slots;
+    this.WAVES = buildWaves(this.stage, phaseIndex);
+
+    // limpa entidades dinâmicas
+    if (this.spawnTimer) { try { this.spawnTimer.remove(false); } catch(_){} this.spawnTimer = null; }
+    for (const e of this.activeEnemies) if (e.container && e.container.scene) e.container.destroy();
+    for (const p of this.activeProjectiles) if (p.gfx && p.gfx.scene) p.gfx.destroy();
+    this.activeEnemies = [];
+    this.activeProjectiles = [];
+    if (this.projectileLayer && this.projectileLayer.scene) this.projectileLayer.clear();
+
+    // limpa torres e slots (novas posições)
+    for (const t of this.towers) if (t.container && t.container.scene) t.container.destroy();
+    this.towers = [];
+    for (const s of this.slots) if (s.container && s.container.scene) s.container.destroy();
+    this.slots = [];
+
+    // limpa mapa (bg, caminho, base)
+    for (const g of (this._mapGfx || [])) if (g && g.scene) g.destroy();
+    this._mapGfx = [];
+    if (this.baseSprite && this.baseSprite.scene) { this.baseSprite.destroy(); this.baseSprite = null; }
+
+    // redesenha
+    this.drawBackground();
+    this.drawPath();
+    this.drawBase();
+    this.createSlots();
+
+    // reset de estado de onda mantendo HP/ouro
+    this.currentWave = 0;
+    this.state.wave = 0;
+    this.state.waveActive = false;
+    this.state.victory = false;
+    this.state.enemiesAlive = 0;
+    this.state.totalWaves = this.WAVES.length;
+    this.state.phase = phaseIndex + 1;
+    this.state.totalPhases = this.stage.phases.length;
+    this.state.stageName = this.stage.name;
+
+    const ui = this.scene.get('UIScene');
+    if (ui && ui.updateStageTitle) ui.updateStageTitle();
+    this.events.emit('stateUpdate', this.state);
   }
 
   handleSpeedChange(v) {
@@ -706,12 +834,12 @@ class GameScene extends Phaser.Scene {
   // ---------- arte ----------
   drawBackground() {
     const p = this.stage.palette;
+    if (!this._mapGfx) this._mapGfx = [];
     const g = this.add.graphics();
-    // céu/fog gradient simulado
     g.fillStyle(p.fog,1).fillRect(0,0,W,H);
     g.fillStyle(p.bg,1).fillRect(0,80,W,H-80);
+    this._mapGfx.push(g);
 
-    // parallax: 2 camadas de montanhas distantes
     const m1 = this.add.graphics();
     m1.fillStyle(p.mtn, 0.55);
     this.drawMountains(m1, 180, 80, 6);
@@ -719,8 +847,8 @@ class GameScene extends Phaser.Scene {
     m2.fillStyle(p.mtn, 0.85);
     this.drawMountains(m2, 230, 60, 8);
     this.parallax1 = m1; this.parallax2 = m2;
+    this._mapGfx.push(m1, m2);
 
-    // grama com textura pontilhada
     const grass = this.add.graphics();
     for (let i=0;i<260;i++){
       grass.fillStyle(p.moss, Phaser.Math.FloatBetween(0.18,0.4));
@@ -730,6 +858,7 @@ class GameScene extends Phaser.Scene {
       grass.fillStyle(p.mossL, Phaser.Math.FloatBetween(0.2,0.5));
       grass.fillCircle(Phaser.Math.Between(0,W), Phaser.Math.Between(0,H), Phaser.Math.Between(2,5));
     }
+    this._mapGfx.push(grass);
   }
   drawMountains(g, baseY, h, n) {
     const step = W/n;
@@ -747,12 +876,12 @@ class GameScene extends Phaser.Scene {
 
   drawPath() {
     const p = this.stage.palette;
+    if (!this._mapGfx) this._mapGfx = [];
     const g = this.add.graphics();
     g.lineStyle(56, p.pathEdge, 1);
     this.strokePath(g);
     g.lineStyle(46, p.path, 1);
     this.strokePath(g);
-    // tile pedras pontilhadas
     g.fillStyle(0x000000, 0.2);
     for (let i=0;i<this.PATH.length-1;i++){
       const a=this.PATH[i], b=this.PATH[i+1];
@@ -765,6 +894,7 @@ class GameScene extends Phaser.Scene {
         g.fillCircle(x,y,Phaser.Math.Between(2,4));
       }
     }
+    this._mapGfx.push(g);
   }
   strokePath(g) {
     g.beginPath();
@@ -1320,9 +1450,29 @@ class GameScene extends Phaser.Scene {
       this.state.waveActive = false;
       this.state.gold += 25; // bônus de onda
       if (this.state.wave >= this.WAVES.length) {
-        this.state.victory = true;
-        this.events.emit('stateUpdate', this.state);
-        this.exitToGameOver({ victory: true, wave: this.state.wave, stage: this.stage.name });
+        // Fase concluída
+        const hasNextPhase = this.phaseId < this.stage.phases.length - 1;
+        if (hasNextPhase) {
+          // reporta progresso parcial e avança fase em sequência (sem recriar a cena)
+          try {
+            window.TD_POST && window.TD_POST({
+              type: 'td:stageComplete',
+              wave: this.state.wave | 0,
+              gold: this.state.gold | 0,
+              victory: true,
+              stage: this.stage.name,
+              phase: this.phase && this.phase.name,
+              partial: true,
+            });
+          } catch (_) {}
+          this.events.emit('stateUpdate', this.state);
+          this.time.delayedCall(800, () => this.loadPhase(this.phaseId + 1));
+        } else {
+          // última fase: vitória total
+          this.state.victory = true;
+          this.events.emit('stateUpdate', this.state);
+          this.exitToGameOver({ victory: true, wave: this.state.wave, stage: this.stage.name });
+        }
       } else {
         this.events.emit('stateUpdate', this.state);
       }
@@ -1414,13 +1564,11 @@ class UIScene extends Phaser.Scene {
 
     this.hpText    = this.add.text(24, 18, "HP: 20",      {fontSize:'20px', color:'#ff8a8a', fontFamily: FONT_BTN, fontStyle:'bold'});
     this.goldText  = this.add.text(160, 18, "Ouro: 150",  {fontSize:'20px', color:'#ffcc44', fontFamily: FONT_BTN, fontStyle:'bold'});
-    this.waveText  = this.add.text(340, 18, "Onda: 0/10", {fontSize:'20px', color:'#e8e0c8', fontFamily: FONT_BTN, fontStyle:'bold'});
+    this.waveText  = this.add.text(340, 18, "Onda: 0/10  ·  Fase: 1/5", {fontSize:'18px', color:'#e8e0c8', fontFamily: FONT_BTN, fontStyle:'bold'});
     [this.hpText, this.goldText, this.waveText].forEach(t => t.setShadow(2,2,'#000000',3));
-    const _stage = STAGES[this.stageId];
-    const _phaseName = this.gameScene && this.gameScene.phase ? this.gameScene.phase.name : '';
-    const _titleStr = _phaseName ? `${_stage.icon} ${_stage.name} — ${_phaseName}` : `${_stage.icon} ${_stage.name}`;
-    this.title = this.add.text(W/2, 8, _titleStr, {fontSize:'16px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'italic'}).setOrigin(0.5,0);
+    this.title = this.add.text(W/2, 8, "", {fontSize:'16px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'italic'}).setOrigin(0.5,0);
     this.title.setShadow(2,2,'#000000',4);
+    this.updateStageTitle();
 
     // botão velocidade
     this.speedIcons = ['🐢','🐇','🚀'];
@@ -1547,8 +1695,21 @@ class UIScene extends Phaser.Scene {
   refresh(s) {
     this.hpText.setText(`HP: ${s.hp}`);
     this.goldText.setText(`Ouro: ${s.gold}`);
-    this.waveText.setText(`Onda: ${s.wave} / ${s.totalWaves}`);
+    const phaseStr = s.totalPhases ? `  ·  Fase: ${s.phase}/${s.totalPhases}` : '';
+    this.waveText.setText(`Onda: ${s.wave} / ${s.totalWaves}${phaseStr}`);
     this.startBtn.setAlpha(s.waveActive ? 0.4 : 1);
+  }
+
+  updateStageTitle() {
+    if (!this.title) return;
+    const stage = STAGES[this.stageId];
+    const phaseName = this.gameScene && this.gameScene.phase ? this.gameScene.phase.name : '';
+    const phaseNum = this.gameScene && typeof this.gameScene.phaseId === 'number'
+      ? ` (${this.gameScene.phaseId + 1}/${stage.phases.length})` : '';
+    const str = phaseName
+      ? `${stage.icon} ${stage.name} — ${phaseName}${phaseNum}`
+      : `${stage.icon} ${stage.name}`;
+    this.title.setText(str);
   }
 
   showBuildMenu(x, y, onPick) {
