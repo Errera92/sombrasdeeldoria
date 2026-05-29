@@ -1023,21 +1023,132 @@ class GameScene extends Phaser.Scene {
       const cross = this.add.text(0,0,"+", {fontSize:'22px', color:'#d8c89a', fontStyle:'bold'}).setOrigin(0.5);
       c.add([ring, cross]);
       c.setSize(50,50).setInteractive({ useHandCursor: true });
-      c.on('pointerover', () => ring.setFillStyle(0x9c8456, 0.6));
-      c.on('pointerout',  () => ring.setFillStyle(0x5a4a30, 0.45));
-      c.on('pointerdown', () => this.openSlotMenu(i));
+      c.on('pointerover', () => {
+        ring.setFillStyle(0x9c8456, 0.6);
+        const slot = this.slots[i];
+        if (this.selectedTowerType && !slot.tower && !this.pendingConfirm) {
+          this.showPreview(i, this.selectedTowerType);
+        }
+      });
+      c.on('pointerout', () => {
+        ring.setFillStyle(0x5a4a30, 0.45);
+        if (!this.pendingConfirm) this.clearPreview();
+      });
+      c.on('pointerdown', () => this.handleSlotClick(i));
       this.slotGroup.add(c);
       return { x: s.x, y: s.y, container: c, tower: null, ring, cross };
     });
   }
 
-  openSlotMenu(slotIndex) {
-    const slot = this.slots[slotIndex];
-    if (slot.tower) return;
-    this.scene.get('UIScene').showBuildMenu(slot.x, slot.y, (typeKey) => {
-      this.buildTower(slotIndex, typeKey);
-    });
+  setSelectedTowerType(typeKey) {
+    this.selectedTowerType = (this.selectedTowerType === typeKey) ? null : typeKey;
+    this.clearPendingConfirm();
+    this.clearPreview();
+    this.events.emit('towerSelectionChanged', this.selectedTowerType);
   }
+
+  handleSlotClick(slotIndex) {
+    const slot = this.slots[slotIndex];
+    if (!slot) return;
+    if (this.pendingConfirm && this.pendingConfirm.slotIndex !== slotIndex) {
+      this.clearPendingConfirm();
+    }
+    if (slot.tower) {
+      this.showReplaceConfirm(slotIndex);
+    } else {
+      if (!this.selectedTowerType) return;
+      const def = TOWER_TYPES[this.selectedTowerType];
+      if (!def || this.state.gold < def.cost) return;
+      this.showBuildConfirm(slotIndex, this.selectedTowerType);
+    }
+  }
+
+  showPreview(slotIndex, typeKey) {
+    this.clearPreview();
+    const slot = this.slots[slotIndex];
+    const def = TOWER_TYPES[typeKey];
+    if (!slot || !def) return;
+    const rangeMul = (window.TD_MULT && window.TD_MULT.range) || 1;
+    const r = def.range * rangeMul;
+    const ring = this.add.circle(slot.x, slot.y, r, def.color, 0.2)
+      .setStrokeStyle(2, def.color, 0.7).setDepth(15);
+    const ghost = this.add.circle(slot.x, slot.y, 18, def.color, 1)
+      .setStrokeStyle(2, 0xffffff, 0.9).setAlpha(0.4).setDepth(16);
+    this.previewGfx = { ring, ghost };
+  }
+
+  clearPreview() {
+    if (!this.previewGfx) return;
+    if (this.previewGfx.ring && this.previewGfx.ring.scene) this.previewGfx.ring.destroy();
+    if (this.previewGfx.ghost && this.previewGfx.ghost.scene) this.previewGfx.ghost.destroy();
+    this.previewGfx = null;
+  }
+
+  _makeConfirmBtn(x, y, label, color, onClick) {
+    const c = this.add.container(x, y).setDepth(18);
+    const bg = this.add.circle(0, 0, 18, color, 0.95).setStrokeStyle(2, 0xffffff, 0.95);
+    const t = this.add.text(0, 0, label, { fontSize: '18px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5);
+    c.add([bg, t]);
+    c.setSize(40, 40).setInteractive({ useHandCursor: true });
+    c.on('pointerover', () => bg.setScale(1.15));
+    c.on('pointerout', () => bg.setScale(1));
+    c.on('pointerdown', (_p, _lx, _ly, ev) => { if (ev && ev.stopPropagation) ev.stopPropagation(); onClick(); });
+    return c;
+  }
+
+  showBuildConfirm(slotIndex, typeKey) {
+    this.clearPendingConfirm();
+    this.showPreview(slotIndex, typeKey);
+    const slot = this.slots[slotIndex];
+    const blocker = this.add.rectangle(0, 0, W, H, 0x000, 0.0001).setOrigin(0).setDepth(17).setInteractive();
+    blocker.on('pointerdown', () => this.clearPendingConfirm());
+    const yes = this._makeConfirmBtn(slot.x - 28, slot.y - 44, '✔', 0x2d6a3a, () => {
+      const key = typeKey;
+      this.clearPendingConfirm();
+      this.buildTower(slotIndex, key);
+    });
+    const no = this._makeConfirmBtn(slot.x + 28, slot.y - 44, '✖', 0x8a2a2a, () => this.clearPendingConfirm());
+    this.pendingConfirm = { slotIndex, kind: 'build', yes, no, blocker };
+  }
+
+  showReplaceConfirm(slotIndex) {
+    this.clearPendingConfirm();
+    const slot = this.slots[slotIndex];
+    const blocker = this.add.rectangle(0, 0, W, H, 0x000, 0.0001).setOrigin(0).setDepth(17).setInteractive();
+    blocker.on('pointerdown', () => this.clearPendingConfirm());
+    const swap = this._makeConfirmBtn(slot.x - 28, slot.y - 44, '🔄', 0x1a4a8a, () => {
+      this.clearPendingConfirm();
+      this.refundTower(slotIndex);
+    });
+    const cancel = this._makeConfirmBtn(slot.x + 28, slot.y - 44, '✖', 0x555555, () => this.clearPendingConfirm());
+    this.pendingConfirm = { slotIndex, kind: 'replace', yes: swap, no: cancel, blocker };
+  }
+
+  clearPendingConfirm() {
+    const p = this.pendingConfirm;
+    this.pendingConfirm = null;
+    if (p) {
+      for (const k of ['yes', 'no', 'blocker']) {
+        if (p[k] && p[k].scene) p[k].destroy();
+      }
+    }
+    this.clearPreview();
+  }
+
+  refundTower(slotIndex) {
+    const slot = this.slots[slotIndex];
+    if (!slot || !slot.tower) return;
+    const cost = slot.tower.def.cost;
+    this.state.gold += Math.floor(cost * 0.5);
+    if (slot.tower.container && slot.tower.container.scene) slot.tower.container.destroy();
+    this.towers = this.towers.filter(t => t !== slot.tower);
+    slot.tower = null;
+    slot.container.setInteractive({ useHandCursor: true });
+    slot.ring.setVisible(true);
+    slot.cross.setVisible(true);
+    this.events.emit('stateUpdate', this.state);
+  }
+
 
   buildTower(slotIndex, typeKey) {
     const slot = this.slots[slotIndex];
