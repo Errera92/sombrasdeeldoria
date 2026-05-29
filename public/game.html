@@ -1918,7 +1918,71 @@ class UIScene extends Phaser.Scene {
     const phaseStr = s.totalPhases ? `  ·  Fase: ${s.phase}/${s.totalPhases}` : '';
     this.waveText.setText(`Onda: ${s.wave} / ${s.totalWaves}${phaseStr}`);
     this.startBtn.setAlpha(s.waveActive ? 0.4 : 1);
+    this.refreshTowerPanel();
   }
+
+  buildTowerPanel() {
+    const panelW = 72;
+    const icons = { archer: '🏹', dwarf: '⛏️', mage: '🔮' };
+    const shortName = { archer: 'Arqueiro', dwarf: 'Anão', mage: 'Mago' };
+    this.towerPanel = this.add.container(0, 0).setDepth(40);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x14181a, 0.92).fillRect(0, 0, panelW, H);
+    bg.lineStyle(2, 0xc9a84c, 0.7);
+    bg.beginPath(); bg.moveTo(panelW, 0); bg.lineTo(panelW, H); bg.strokePath();
+    this.towerPanel.add(bg);
+
+    this.towerRows = {};
+    const items = Object.entries(TOWER_TYPES);
+    const startY = 70;
+    const itemH = 88;
+    items.forEach(([key, def], i) => {
+      const yy = startY + i * itemH;
+      const cell = this.add.container(panelW / 2, yy + itemH / 2);
+      const frame = this.add.graphics();
+      const drawFrame = (selected) => {
+        frame.clear();
+        const stroke = selected ? 0xffd700 : 0x6a5a36;
+        frame.fillStyle(0x2a2418, 0.95).fillRoundedRect(-30, -38, 60, 76, 10);
+        frame.lineStyle(selected ? 3 : 1.5, stroke, selected ? 1 : 0.9).strokeRoundedRect(-30, -38, 60, 76, 10);
+      };
+      drawFrame(false);
+      const swatch = this.add.graphics();
+      swatch.fillStyle(def.color, 1).fillRoundedRect(-16, -32, 32, 22, 4);
+      swatch.lineStyle(1, 0x000000, 1).strokeRoundedRect(-16, -32, 32, 22, 4);
+      const icon = this.add.text(0, -21, icons[key] || '⚔️', { fontSize: '16px' }).setOrigin(0.5);
+      const name = this.add.text(0, 4, shortName[key] || def.name, {
+        fontSize: '11px', color: '#f0e0c0', fontFamily: FONT_BTN, fontStyle: 'bold'
+      }).setOrigin(0.5);
+      const cost = this.add.text(0, 22, `🪙${def.cost}`, {
+        fontSize: '12px', color: '#ffcc44', fontFamily: FONT_BTN, fontStyle: 'bold'
+      }).setOrigin(0.5);
+      [name, cost].forEach(t => t.setShadow(1, 1, '#000', 2));
+      cell.add([frame, swatch, icon, name, cost]);
+      cell.setSize(60, 76).setInteractive({ useHandCursor: true });
+      cell.on('pointerdown', () => {
+        if (this.gameScene) this.gameScene.setSelectedTowerType(key);
+      });
+      this.towerPanel.add(cell);
+      this.towerRows[key] = { cell, frame, cost, drawFrame, def };
+    });
+    this.refreshTowerPanel();
+  }
+
+  refreshTowerPanel(selOverride) {
+    if (!this.towerRows) return;
+    const sel = selOverride !== undefined
+      ? selOverride
+      : (this.gameScene ? this.gameScene.selectedTowerType : null);
+    const gold = (this.gameScene && this.gameScene.state) ? this.gameScene.state.gold : 0;
+    Object.entries(this.towerRows).forEach(([key, row]) => {
+      const canAfford = gold >= row.def.cost;
+      row.drawFrame(sel === key);
+      row.cell.setAlpha(canAfford ? 1 : 0.45);
+      row.cost.setColor(canAfford ? '#ffcc44' : '#aa6666');
+    });
+  }
+
 
   updateStageTitle() {
     if (!this.title) return;
