@@ -320,26 +320,115 @@ const PHASE_MIXES = [
   ],
 ];
 
-// Embaralha a ordem dos 5 layouts por estágio (determinístico via seed = stageId)
-// para garantir que cada estágio tenha as 5 geometrias, na ordem única.
-function phaseLayoutOrder(stageId) {
-  const order = [0,1,2,3,4];
-  // rotação pelo stageId para variar a ordem entre estágios
-  const k = stageId % 5;
-  return order.slice(k).concat(order.slice(0, k));
+// RNG determinístico (mulberry32) — mesma seed gera sempre o mesmo path.
+function _mulberry32(seed) {
+  let s = seed >>> 0;
+  return function() {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Gera path + slots únicos por (stageId, phaseIndex).
+// Varia: posição Y de entrada (100..600), nº de segmentos (4..8),
+// direção predominante (horizontal-first / vertical-first / diagonal).
+function generatePhaseLayout(stageId, phaseIndex) {
+  const seed = ((stageId + 1) * 92821) ^ ((phaseIndex + 1) * 16777619);
+  const r = _mulberry32(seed >>> 0);
+  const W = 1280, H = 720;
+  const minY = 100, maxY = 600;
+  const entryY = Math.round(minY + r() * (maxY - minY));
+  const segments = 4 + Math.floor(r() * 5); // 4..8
+  const styles = ['horizontal-first', 'vertical-first', 'diagonal'];
+  const style = styles[(stageId * 2 + phaseIndex + Math.floor(r() * 3)) % 3];
+
+  const marginX = 80;
+  const path = [{ x: -30, y: entryY }];
+  let cx = marginX + Math.round(r() * 120);
+  let cy = entryY;
+  path.push({ x: cx, y: cy });
+
+  const usableW = W - marginX * 2;
+  for (let i = 0; i < segments; i++) {
+    const tProg = (i + 1) / segments;
+    const targetX = Math.round(marginX + tProg * usableW);
+    const targetY = Math.round(minY + r() * (maxY - minY));
+    if (style === 'horizontal-first') {
+      if (i % 2 === 0) { path.push({ x: targetX, y: cy }); cx = targetX; }
+      else { path.push({ x: cx, y: targetY }); cy = targetY; }
+    } else if (style === 'vertical-first') {
+      if (i % 2 === 0) { path.push({ x: cx, y: targetY }); cy = targetY; }
+      else { path.push({ x: targetX, y: cy }); cx = targetX; }
+    } else {
+      // diagonal: L-step (horizontal seguido de vertical)
+      path.push({ x: targetX, y: cy });
+      path.push({ x: targetX, y: targetY });
+      cx = targetX; cy = targetY;
+    }
+  }
+  if (path[path.length - 1].x < W - marginX) {
+    path.push({ x: W - marginX, y: cy });
+  }
+  // garante saída pela direita
+  path.push({ x: W + 30, y: cy });
+
+  // Slots adjacentes ao path, evitando sobreposição.
+  const slots = [];
+  const used = new Set();
+  const tooCloseToPath = (sx, sy, minDist) => {
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = path[i], b = path[i + 1];
+      // distância ponto-segmento
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const len2 = dx * dx + dy * dy || 1;
+      let t = ((sx - a.x) * dx + (sy - a.y) * dy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const px = a.x + t * dx, py = a.y + t * dy;
+      if (Math.hypot(sx - px, sy - py) < minDist) return true;
+    }
+    return false;
+  };
+  const tryAdd = (sx, sy) => {
+    if (sx < 50 || sx > W - 50 || sy < 50 || sy > H - 50) return false;
+    const key = Math.round(sx / 40) + ',' + Math.round(sy / 40);
+    if (used.has(key)) return false;
+    if (tooCloseToPath(sx, sy, 60)) return false;
+    used.add(key);
+    slots.push({ x: Math.round(sx), y: Math.round(sy) });
+    return true;
+  };
+
+  // 1) tenta posicionar próximo a cada vértice interno do path
+  for (let i = 1; i < path.length - 1 && slots.length < 14; i++) {
+    const p = path[i];
+    for (const [dx, dy] of [[0,-95],[0,95],[-95,0],[95,0],[-80,-80],[80,-80],[-80,80],[80,80]]) {
+      if (slots.length >= 14) break;
+      tryAdd(p.x + dx, p.y + dy);
+    }
+  }
+  // 2) preenche com grid caso ainda falte
+  for (let y = 90; y < H - 70 && slots.length < 12; y += 110) {
+    for (let x = 110; x < W - 90 && slots.length < 12; x += 150) {
+      tryAdd(x, y);
+    }
+  }
+
+  return { shape: style, path, slots };
 }
 
 function buildStagePhases(stageId) {
-  const order = phaseLayoutOrder(stageId);
   const mixes = PHASE_MIXES[stageId] || PHASE_MIXES[0];
   return mixes.map((m, i) => {
-    const layout = PHASE_LAYOUTS[order[i]];
+    const layout = generatePhaseLayout(stageId, i);
     return {
       name: m.name,
       mix: m.mix,
       shape: layout.shape,
-      path: layout.path.map(p => ({ x: p.x, y: p.y })),
-      slots: layout.slots.map(p => ({ x: p.x, y: p.y })),
+      path: layout.path,
+      slots: layout.slots,
     };
   });
 }
@@ -758,7 +847,10 @@ class GameScene extends Phaser.Scene {
     this.drawBase();
     this.createSlots();
 
-    // reset de estado de onda mantendo HP/ouro
+    // reset de estado de onda; ouro é redefinido para o valor inicial base
+    // (ouro acumulado da fase anterior é descartado ao trocar de fase).
+    this.gold = 150 + ((window.TD_MULT && window.TD_MULT.startingGoldBonus) | 0);
+    this.state.gold = this.gold;
     this.currentWave = 0;
     this.state.wave = 0;
     this.state.waveActive = false;
