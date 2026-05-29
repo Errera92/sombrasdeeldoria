@@ -1822,8 +1822,11 @@ class UIScene extends Phaser.Scene {
     };
     this.shopOpen = false;
     this.buildShop();
+    this.buildTowerPanel();
 
+    this.towerSelHandler = (sel) => this.refreshTowerPanel(sel);
     game.events.on('stateUpdate', this.refreshHandler);
+    game.events.on('towerSelectionChanged', this.towerSelHandler);
     this.menu = null;
   }
 
