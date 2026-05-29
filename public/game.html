@@ -847,7 +847,10 @@ class GameScene extends Phaser.Scene {
     this.drawBase();
     this.createSlots();
 
-    // reset de estado de onda mantendo HP/ouro
+    // reset de estado de onda; ouro é redefinido para o valor inicial base
+    // (ouro acumulado da fase anterior é descartado ao trocar de fase).
+    this.gold = 150 + ((window.TD_MULT && window.TD_MULT.startingGoldBonus) | 0);
+    this.state.gold = this.gold;
     this.currentWave = 0;
     this.state.wave = 0;
     this.state.waveActive = false;
