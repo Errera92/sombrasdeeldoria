@@ -1281,6 +1281,7 @@ class GameScene extends Phaser.Scene {
 
     c.on('pointerover', () => this.rangeIndicator.setPosition(slot.x, slot.y).setRadius(def.range).setVisible(true));
     c.on('pointerout', () => this.rangeIndicator.setVisible(false));
+    c.on('pointerdown', () => this.handleSlotClick(slotIndex));
     this.events.emit('stateUpdate', this.state);
   }
 
