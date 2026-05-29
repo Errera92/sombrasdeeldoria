@@ -879,6 +879,8 @@ class GameScene extends Phaser.Scene {
   }
 
   shutdownGame() {
+    this.clearPendingConfirm();
+    this.clearPreview();
     this.events.off('startWave', this.startWave, this);
     this.events.off('useItem', this.useItem, this);
     this.events.off('setSpeed', this.handleSpeedChange, this);
