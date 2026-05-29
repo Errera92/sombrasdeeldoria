@@ -833,6 +833,10 @@ class GameScene extends Phaser.Scene {
     this.activeProjectiles = [];
     if (this.projectileLayer && this.projectileLayer.scene) this.projectileLayer.clear();
 
+    // cancela confirmação pendente e remove preview antes de destruir slots/torres
+    this.clearPendingConfirm();
+    this.clearPreview();
+
     // limpa torres e slots (novas posições)
     for (const t of this.towers) if (t.container && t.container.scene) t.container.destroy();
     this.towers = [];
