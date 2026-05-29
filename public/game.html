@@ -770,6 +770,9 @@ class GameScene extends Phaser.Scene {
     this.activeEnemies = [];
     this.activeProjectiles = [];
     this.towers = [];
+    this.selectedTowerType = null;
+    this.pendingConfirm = null;
+    this.previewGfx = null;
     this.enemies = null;
     this.projectiles = null;
     this.towerGroup = null;
@@ -830,6 +833,10 @@ class GameScene extends Phaser.Scene {
     this.activeProjectiles = [];
     if (this.projectileLayer && this.projectileLayer.scene) this.projectileLayer.clear();
 
+    // cancela confirmação pendente e remove preview antes de destruir slots/torres
+    this.clearPendingConfirm();
+    this.clearPreview();
+
     // limpa torres e slots (novas posições)
     for (const t of this.towers) if (t.container && t.container.scene) t.container.destroy();
     this.towers = [];
@@ -872,6 +879,8 @@ class GameScene extends Phaser.Scene {
   }
 
   shutdownGame() {
+    this.clearPendingConfirm();
+    this.clearPreview();
     this.events.off('startWave', this.startWave, this);
     this.events.off('useItem', this.useItem, this);
     this.events.off('setSpeed', this.handleSpeedChange, this);
@@ -1014,21 +1023,132 @@ class GameScene extends Phaser.Scene {
       const cross = this.add.text(0,0,"+", {fontSize:'22px', color:'#d8c89a', fontStyle:'bold'}).setOrigin(0.5);
       c.add([ring, cross]);
       c.setSize(50,50).setInteractive({ useHandCursor: true });
-      c.on('pointerover', () => ring.setFillStyle(0x9c8456, 0.6));
-      c.on('pointerout',  () => ring.setFillStyle(0x5a4a30, 0.45));
-      c.on('pointerdown', () => this.openSlotMenu(i));
+      c.on('pointerover', () => {
+        ring.setFillStyle(0x9c8456, 0.6);
+        const slot = this.slots[i];
+        if (this.selectedTowerType && !slot.tower && !this.pendingConfirm) {
+          this.showPreview(i, this.selectedTowerType);
+        }
+      });
+      c.on('pointerout', () => {
+        ring.setFillStyle(0x5a4a30, 0.45);
+        if (!this.pendingConfirm) this.clearPreview();
+      });
+      c.on('pointerdown', () => this.handleSlotClick(i));
       this.slotGroup.add(c);
       return { x: s.x, y: s.y, container: c, tower: null, ring, cross };
     });
   }
 
-  openSlotMenu(slotIndex) {
-    const slot = this.slots[slotIndex];
-    if (slot.tower) return;
-    this.scene.get('UIScene').showBuildMenu(slot.x, slot.y, (typeKey) => {
-      this.buildTower(slotIndex, typeKey);
-    });
+  setSelectedTowerType(typeKey) {
+    this.selectedTowerType = (this.selectedTowerType === typeKey) ? null : typeKey;
+    this.clearPendingConfirm();
+    this.clearPreview();
+    this.events.emit('towerSelectionChanged', this.selectedTowerType);
   }
+
+  handleSlotClick(slotIndex) {
+    const slot = this.slots[slotIndex];
+    if (!slot) return;
+    if (this.pendingConfirm && this.pendingConfirm.slotIndex !== slotIndex) {
+      this.clearPendingConfirm();
+    }
+    if (slot.tower) {
+      this.showReplaceConfirm(slotIndex);
+    } else {
+      if (!this.selectedTowerType) return;
+      const def = TOWER_TYPES[this.selectedTowerType];
+      if (!def || this.state.gold < def.cost) return;
+      this.showBuildConfirm(slotIndex, this.selectedTowerType);
+    }
+  }
+
+  showPreview(slotIndex, typeKey) {
+    this.clearPreview();
+    const slot = this.slots[slotIndex];
+    const def = TOWER_TYPES[typeKey];
+    if (!slot || !def) return;
+    const rangeMul = (window.TD_MULT && window.TD_MULT.range) || 1;
+    const r = def.range * rangeMul;
+    const ring = this.add.circle(slot.x, slot.y, r, def.color, 0.2)
+      .setStrokeStyle(2, def.color, 0.7).setDepth(15);
+    const ghost = this.add.circle(slot.x, slot.y, 18, def.color, 1)
+      .setStrokeStyle(2, 0xffffff, 0.9).setAlpha(0.4).setDepth(16);
+    this.previewGfx = { ring, ghost };
+  }
+
+  clearPreview() {
+    if (!this.previewGfx) return;
+    if (this.previewGfx.ring && this.previewGfx.ring.scene) this.previewGfx.ring.destroy();
+    if (this.previewGfx.ghost && this.previewGfx.ghost.scene) this.previewGfx.ghost.destroy();
+    this.previewGfx = null;
+  }
+
+  _makeConfirmBtn(x, y, label, color, onClick) {
+    const c = this.add.container(x, y).setDepth(18);
+    const bg = this.add.circle(0, 0, 18, color, 0.95).setStrokeStyle(2, 0xffffff, 0.95);
+    const t = this.add.text(0, 0, label, { fontSize: '18px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5);
+    c.add([bg, t]);
+    c.setSize(40, 40).setInteractive({ useHandCursor: true });
+    c.on('pointerover', () => bg.setScale(1.15));
+    c.on('pointerout', () => bg.setScale(1));
+    c.on('pointerdown', (_p, _lx, _ly, ev) => { if (ev && ev.stopPropagation) ev.stopPropagation(); onClick(); });
+    return c;
+  }
+
+  showBuildConfirm(slotIndex, typeKey) {
+    this.clearPendingConfirm();
+    this.showPreview(slotIndex, typeKey);
+    const slot = this.slots[slotIndex];
+    const blocker = this.add.rectangle(0, 0, W, H, 0x000, 0.0001).setOrigin(0).setDepth(17).setInteractive();
+    blocker.on('pointerdown', () => this.clearPendingConfirm());
+    const yes = this._makeConfirmBtn(slot.x - 28, slot.y - 44, '✔', 0x2d6a3a, () => {
+      const key = typeKey;
+      this.clearPendingConfirm();
+      this.buildTower(slotIndex, key);
+    });
+    const no = this._makeConfirmBtn(slot.x + 28, slot.y - 44, '✖', 0x8a2a2a, () => this.clearPendingConfirm());
+    this.pendingConfirm = { slotIndex, kind: 'build', yes, no, blocker };
+  }
+
+  showReplaceConfirm(slotIndex) {
+    this.clearPendingConfirm();
+    const slot = this.slots[slotIndex];
+    const blocker = this.add.rectangle(0, 0, W, H, 0x000, 0.0001).setOrigin(0).setDepth(17).setInteractive();
+    blocker.on('pointerdown', () => this.clearPendingConfirm());
+    const swap = this._makeConfirmBtn(slot.x - 28, slot.y - 44, '🔄', 0x1a4a8a, () => {
+      this.clearPendingConfirm();
+      this.refundTower(slotIndex);
+    });
+    const cancel = this._makeConfirmBtn(slot.x + 28, slot.y - 44, '✖', 0x555555, () => this.clearPendingConfirm());
+    this.pendingConfirm = { slotIndex, kind: 'replace', yes: swap, no: cancel, blocker };
+  }
+
+  clearPendingConfirm() {
+    const p = this.pendingConfirm;
+    this.pendingConfirm = null;
+    if (p) {
+      for (const k of ['yes', 'no', 'blocker']) {
+        if (p[k] && p[k].scene) p[k].destroy();
+      }
+    }
+    this.clearPreview();
+  }
+
+  refundTower(slotIndex) {
+    const slot = this.slots[slotIndex];
+    if (!slot || !slot.tower) return;
+    const cost = slot.tower.def.cost;
+    this.state.gold += Math.floor(cost * 0.5);
+    if (slot.tower.container && slot.tower.container.scene) slot.tower.container.destroy();
+    this.towers = this.towers.filter(t => t !== slot.tower);
+    slot.tower = null;
+    slot.container.setInteractive({ useHandCursor: true });
+    slot.ring.setVisible(true);
+    slot.cross.setVisible(true);
+    this.events.emit('stateUpdate', this.state);
+  }
+
 
   buildTower(slotIndex, typeKey) {
     const slot = this.slots[slotIndex];
@@ -1161,6 +1281,7 @@ class GameScene extends Phaser.Scene {
 
     c.on('pointerover', () => this.rangeIndicator.setPosition(slot.x, slot.y).setRadius(def.range).setVisible(true));
     c.on('pointerout', () => this.rangeIndicator.setVisible(false));
+    c.on('pointerdown', () => this.handleSlotClick(slotIndex));
     this.events.emit('stateUpdate', this.state);
   }
 
@@ -1654,9 +1775,9 @@ class UIScene extends Phaser.Scene {
     topG.fillStyle(0x000000, 0.7).fillRoundedRect(8, 4, W-16, 50, 12);
     topG.lineStyle(1, 0xc9a84c, 0.6).strokeRoundedRect(8, 4, W-16, 50, 12);
 
-    this.hpText    = this.add.text(24, 18, "HP: 20",      {fontSize:'20px', color:'#ff8a8a', fontFamily: FONT_BTN, fontStyle:'bold'});
-    this.goldText  = this.add.text(160, 18, "Ouro: 150",  {fontSize:'20px', color:'#ffcc44', fontFamily: FONT_BTN, fontStyle:'bold'});
-    this.waveText  = this.add.text(340, 18, "Onda: 0/10  ·  Fase: 1/5", {fontSize:'18px', color:'#e8e0c8', fontFamily: FONT_BTN, fontStyle:'bold'});
+    this.hpText    = this.add.text(92, 18, "HP: 20",      {fontSize:'20px', color:'#ff8a8a', fontFamily: FONT_BTN, fontStyle:'bold'});
+    this.goldText  = this.add.text(220, 18, "Ouro: 150",  {fontSize:'20px', color:'#ffcc44', fontFamily: FONT_BTN, fontStyle:'bold'});
+    this.waveText  = this.add.text(390, 18, "Onda: 0/10  ·  Fase: 1/5", {fontSize:'18px', color:'#e8e0c8', fontFamily: FONT_BTN, fontStyle:'bold'});
     [this.hpText, this.goldText, this.waveText].forEach(t => t.setShadow(2,2,'#000000',3));
     this.title = this.add.text(W/2, 8, "", {fontSize:'16px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'italic'}).setOrigin(0.5,0);
     this.title.setShadow(2,2,'#000000',4);
@@ -1701,21 +1822,28 @@ class UIScene extends Phaser.Scene {
     };
     this.shopOpen = false;
     this.buildShop();
+    this.buildTowerPanel();
 
+    this.towerSelHandler = (sel) => this.refreshTowerPanel(sel);
     game.events.on('stateUpdate', this.refreshHandler);
+    game.events.on('towerSelectionChanged', this.towerSelHandler);
     this.menu = null;
   }
 
   shutdownUI() {
-    if (this.gameScene && this.gameScene.events && this.refreshHandler) {
-      this.gameScene.events.off('stateUpdate', this.refreshHandler);
+    if (this.gameScene && this.gameScene.events) {
+      if (this.refreshHandler) this.gameScene.events.off('stateUpdate', this.refreshHandler);
+      if (this.towerSelHandler) this.gameScene.events.off('towerSelectionChanged', this.towerSelHandler);
     }
     this.closeMenu();
     this.tweens.killAll();
     this.time.removeAllEvents();
     this.gameScene = null;
     this.refreshHandler = null;
+    this.towerSelHandler = null;
+    this.towerRows = null;
   }
+
 
   buildShop() {
     this.shop = this.add.container(W, 80).setVisible(false);
@@ -1790,7 +1918,71 @@ class UIScene extends Phaser.Scene {
     const phaseStr = s.totalPhases ? `  ·  Fase: ${s.phase}/${s.totalPhases}` : '';
     this.waveText.setText(`Onda: ${s.wave} / ${s.totalWaves}${phaseStr}`);
     this.startBtn.setAlpha(s.waveActive ? 0.4 : 1);
+    this.refreshTowerPanel();
   }
+
+  buildTowerPanel() {
+    const panelW = 72;
+    const icons = { archer: '🏹', dwarf: '⛏️', mage: '🔮' };
+    const shortName = { archer: 'Arqueiro', dwarf: 'Anão', mage: 'Mago' };
+    this.towerPanel = this.add.container(0, 0).setDepth(40);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x14181a, 0.92).fillRect(0, 0, panelW, H);
+    bg.lineStyle(2, 0xc9a84c, 0.7);
+    bg.beginPath(); bg.moveTo(panelW, 0); bg.lineTo(panelW, H); bg.strokePath();
+    this.towerPanel.add(bg);
+
+    this.towerRows = {};
+    const items = Object.entries(TOWER_TYPES);
+    const startY = 70;
+    const itemH = 88;
+    items.forEach(([key, def], i) => {
+      const yy = startY + i * itemH;
+      const cell = this.add.container(panelW / 2, yy + itemH / 2);
+      const frame = this.add.graphics();
+      const drawFrame = (selected) => {
+        frame.clear();
+        const stroke = selected ? 0xffd700 : 0x6a5a36;
+        frame.fillStyle(0x2a2418, 0.95).fillRoundedRect(-30, -38, 60, 76, 10);
+        frame.lineStyle(selected ? 3 : 1.5, stroke, selected ? 1 : 0.9).strokeRoundedRect(-30, -38, 60, 76, 10);
+      };
+      drawFrame(false);
+      const swatch = this.add.graphics();
+      swatch.fillStyle(def.color, 1).fillRoundedRect(-16, -32, 32, 22, 4);
+      swatch.lineStyle(1, 0x000000, 1).strokeRoundedRect(-16, -32, 32, 22, 4);
+      const icon = this.add.text(0, -21, icons[key] || '⚔️', { fontSize: '16px' }).setOrigin(0.5);
+      const name = this.add.text(0, 4, shortName[key] || def.name, {
+        fontSize: '11px', color: '#f0e0c0', fontFamily: FONT_BTN, fontStyle: 'bold'
+      }).setOrigin(0.5);
+      const cost = this.add.text(0, 22, `🪙${def.cost}`, {
+        fontSize: '12px', color: '#ffcc44', fontFamily: FONT_BTN, fontStyle: 'bold'
+      }).setOrigin(0.5);
+      [name, cost].forEach(t => t.setShadow(1, 1, '#000', 2));
+      cell.add([frame, swatch, icon, name, cost]);
+      cell.setSize(60, 76).setInteractive({ useHandCursor: true });
+      cell.on('pointerdown', () => {
+        if (this.gameScene) this.gameScene.setSelectedTowerType(key);
+      });
+      this.towerPanel.add(cell);
+      this.towerRows[key] = { cell, frame, cost, drawFrame, def };
+    });
+    this.refreshTowerPanel();
+  }
+
+  refreshTowerPanel(selOverride) {
+    if (!this.towerRows) return;
+    const sel = selOverride !== undefined
+      ? selOverride
+      : (this.gameScene ? this.gameScene.selectedTowerType : null);
+    const gold = (this.gameScene && this.gameScene.state) ? this.gameScene.state.gold : 0;
+    Object.entries(this.towerRows).forEach(([key, row]) => {
+      const canAfford = gold >= row.def.cost;
+      row.drawFrame(sel === key);
+      row.cell.setAlpha(canAfford ? 1 : 0.45);
+      row.cost.setColor(canAfford ? '#ffcc44' : '#aa6666');
+    });
+  }
+
 
   updateStageTitle() {
     if (!this.title) return;
