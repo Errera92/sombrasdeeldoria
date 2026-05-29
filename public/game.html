@@ -770,6 +770,9 @@ class GameScene extends Phaser.Scene {
     this.activeEnemies = [];
     this.activeProjectiles = [];
     this.towers = [];
+    this.selectedTowerType = null;
+    this.pendingConfirm = null;
+    this.previewGfx = null;
     this.enemies = null;
     this.projectiles = null;
     this.towerGroup = null;
