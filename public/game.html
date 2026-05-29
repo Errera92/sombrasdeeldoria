@@ -1831,15 +1831,19 @@ class UIScene extends Phaser.Scene {
   }
 
   shutdownUI() {
-    if (this.gameScene && this.gameScene.events && this.refreshHandler) {
-      this.gameScene.events.off('stateUpdate', this.refreshHandler);
+    if (this.gameScene && this.gameScene.events) {
+      if (this.refreshHandler) this.gameScene.events.off('stateUpdate', this.refreshHandler);
+      if (this.towerSelHandler) this.gameScene.events.off('towerSelectionChanged', this.towerSelHandler);
     }
     this.closeMenu();
     this.tweens.killAll();
     this.time.removeAllEvents();
     this.gameScene = null;
     this.refreshHandler = null;
+    this.towerSelHandler = null;
+    this.towerRows = null;
   }
+
 
   buildShop() {
     this.shop = this.add.container(W, 80).setVisible(false);
