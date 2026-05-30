@@ -149,6 +149,11 @@ window.addEventListener('message', (ev) => {
         startingGoldBonus: +d.multipliers.startingGoldBonus || 0,
       };
     }
+    if (d.towerUpgrades && typeof d.towerUpgrades === 'object') {
+      window.TD_TOWER_UPGRADES = d.towerUpgrades;
+    } else if (d.type === 'td:bootstrap') {
+      window.TD_TOWER_UPGRADES = window.TD_TOWER_UPGRADES || {};
+    }
     if (typeof d.nickname === 'string') window.TD_PLAYER.nickname = d.nickname;
     if (typeof d.gems === 'number') window.TD_PLAYER.gems = d.gems;
     try {
