@@ -12,7 +12,7 @@ export const Route = createFileRoute("/play")({
 function PlayPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const { profile, multipliers, submitResult } = useUpgrades(user?.id);
+  const { profile, levels, multipliers, submitResult } = useUpgrades(user?.id);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const sentBootstrapRef = useRef(false);
 
