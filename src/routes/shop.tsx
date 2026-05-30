@@ -7,7 +7,16 @@ import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/shop")({
   component: ShopPage,
-  head: () => ({ meta: [{ title: "Loja — Sombras de Eldoria" }] }),
+  head: () => ({
+    meta: [
+      { title: "Loja de Upgrades — Sombras de Eldoria Tower Defense" },
+      { name: "description", content: "Gaste seus gems na loja de upgrades de Sombras de Eldoria. Melhore arqueiros, anões e magos com bônus permanentes." },
+      { property: "og:title", content: "Loja de Upgrades — Sombras de Eldoria" },
+      { property: "og:description", content: "Gaste gems para melhorar arqueiros, anões e magos com bônus permanentes." },
+      { property: "og:url", content: "https://sombrasdeeldoria.lovable.app/shop" },
+    ],
+    links: [{ rel: "canonical", href: "https://sombrasdeeldoria.lovable.app/shop" }],
+  }),
 });
 
 const SECTIONS: { key: TowerType; label: string; icon: string; accent: string; border: string; bg: string }[] = [
