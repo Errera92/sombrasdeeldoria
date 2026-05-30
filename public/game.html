@@ -1991,7 +1991,194 @@ class UIScene extends Phaser.Scene {
     this.waveText.setText(`Onda: ${s.wave} / ${s.totalWaves}${phaseStr}`);
     this.startBtn.setAlpha(s.waveActive ? 0.4 : 1);
     this.refreshTowerPanel();
+    this.refreshUpgradePanel();
   }
+
+  // =========== UPGRADES IN-GAME ===========
+  buildUpgradePanel() {
+    const w = 260, h = H - 80;
+    this.upgradePanel = this.add.container(W, 70).setVisible(false).setDepth(50);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x14181a, 0.96).fillRoundedRect(0, 0, w, h, 14);
+    bg.lineStyle(2, 0xa080c8, 0.8).strokeRoundedRect(0, 0, w, h, 14);
+    const title = this.add.text(w/2, 10, "⬆ Upgrades Ativos", {
+      fontSize:'18px', color:'#e8d8ff', fontFamily: FONT_TITLE, fontStyle:'bold'
+    }).setOrigin(0.5,0);
+    title.setShadow(2,2,'#000',4);
+    this.upgradePanel.add([bg, title]);
+    this.upgradePanelW = w;
+    this.upgradePanelH = h;
+    this.upgradePanelContent = this.add.container(0, 40);
+    this.upgradePanel.add(this.upgradePanelContent);
+    this.refreshUpgradePanel();
+  }
+
+  toggleUpgradePanel() {
+    if (!this.upgradePanel) return;
+    this.upgradePanelOpen = !this.upgradePanelOpen;
+    this.upgradePanel.setVisible(true);
+    this.tweens.add({
+      targets: this.upgradePanel,
+      x: this.upgradePanelOpen ? W - this.upgradePanelW - 10 : W,
+      duration: 200,
+      onComplete: () => { if (!this.upgradePanelOpen) this.upgradePanel.setVisible(false); }
+    });
+    if (this.upgradePanelOpen) this.refreshUpgradePanel();
+  }
+
+  refreshUpgradePanel() {
+    if (!this.upgradePanelContent) return;
+    this.upgradePanelContent.removeAll(true);
+
+    const owned = window.TD_TOWER_UPGRADES || {};
+    const active = window.TD_ACTIVE_UPGRADES || {};
+    const gold = (this.gameScene && this.gameScene.state) ? this.gameScene.state.gold : 0;
+
+    const sections = [
+      { key: 'archer', label: '🏹 Arqueiro', color: '#9cffb0' },
+      { key: 'dwarf',  label: '⛏ Anão',     color: '#e8c87a' },
+      { key: 'mage',   label: '🔮 Mago',    color: '#e8a8ff' },
+      { key: 'global', label: '🌍 Global',  color: '#ffd966' },
+    ];
+
+    let y = 0;
+    const w = this.upgradePanelW;
+
+    sections.forEach(section => {
+      const ids = Object.keys(UPGRADE_DEFS).filter(id =>
+        UPGRADE_DEFS[id].tower === section.key && (owned[id] | 0) > 0
+      );
+      if (ids.length === 0) return;
+
+      const header = this.add.text(12, y, section.label, {
+        fontSize: '13px', color: section.color, fontFamily: FONT_BTN, fontStyle: 'bold'
+      });
+      header.setShadow(1,1,'#000',2);
+      this.upgradePanelContent.add(header);
+      y += 20;
+
+      ids.forEach(id => {
+        const def = UPGRADE_DEFS[id];
+        const lvl = owned[id] | 0;
+        const cost = UPGRADE_ACTIVATION_COST[id] || 0;
+        const isActive = !!active[id];
+        const isPreOnly = id === 'starting_gold';
+
+        const rowG = this.add.graphics();
+        const rowW = w - 16, rowH = 48;
+        let fill = 0x2a2418, stroke = 0x6a5a36;
+        if (isActive) { fill = 0x1d4a1a; stroke = 0x6cbf4c; }
+        else if (isPreOnly) { fill = 0x222226; stroke = 0x444448; }
+        rowG.fillStyle(fill, 0.95).fillRoundedRect(8, y, rowW, rowH, 8);
+        rowG.lineStyle(1.5, stroke, 0.9).strokeRoundedRect(8, y, rowW, rowH, 8);
+
+        const ico = this.add.text(18, y + 6, def.icon, { fontSize: '22px' });
+        const name = this.add.text(50, y + 4, def.name, {
+          fontSize: '12px', color: '#f0e0c0', fontFamily: FONT_BTN, fontStyle: 'bold'
+        });
+        const sub = this.add.text(50, y + 20, `Nível ${lvl}  ·  🪙 ${cost}`, {
+          fontSize: '11px', color: '#cfc09a', fontFamily: FONT_BTN
+        });
+        [name, sub].forEach(t => t.setShadow(1,1,'#000',2));
+        this.upgradePanelContent.add([rowG, ico, name, sub]);
+
+        if (isPreOnly) {
+          const tag = this.add.text(w - 18, y + rowH/2, 'Pré-partida', {
+            fontSize: '11px', color: '#a8a8b0', fontFamily: FONT_BTN, fontStyle: 'italic'
+          }).setOrigin(1, 0.5);
+          this.upgradePanelContent.add(tag);
+        } else if (isActive) {
+          const tag = this.add.text(w - 18, y + rowH/2, '✔ Ativo', {
+            fontSize: '12px', color: '#9cffb0', fontFamily: FONT_BTN, fontStyle: 'bold'
+          }).setOrigin(1, 0.5);
+          tag.setShadow(1,1,'#000',2);
+          this.upgradePanelContent.add(tag);
+        } else {
+          const canAfford = gold >= cost;
+          const btnG = this.add.graphics();
+          const bw = 62, bh = 28, bx = w - bw - 14, by = y + (rowH - bh) / 2;
+          const btnFill = canAfford ? 0x8a6a14 : 0x3a3428;
+          const btnStroke = canAfford ? 0xffd966 : 0x5a5440;
+          btnG.fillStyle(btnFill, 1).fillRoundedRect(bx, by, bw, bh, 8);
+          btnG.lineStyle(1.5, btnStroke, 1).strokeRoundedRect(bx, by, bw, bh, 8);
+          const btnTxt = this.add.text(bx + bw/2, by + bh/2, 'Ativar', {
+            fontSize: '12px', color: canAfford ? '#fff8d8' : '#888070', fontFamily: FONT_BTN, fontStyle: 'bold'
+          }).setOrigin(0.5);
+          this.upgradePanelContent.add([btnG, btnTxt]);
+          if (canAfford) {
+            const hit = this.add.zone(bx, by, bw, bh).setOrigin(0).setInteractive({ useHandCursor: true });
+            hit.on('pointerdown', () => this.activateUpgrade(id));
+            this.upgradePanelContent.add(hit);
+          }
+        }
+        y += rowH + 6;
+      });
+      y += 6;
+    });
+
+    if (y === 0) {
+      const empty = this.add.text(this.upgradePanelW/2, 30,
+        'Compre upgrades na Loja\npara ativá-los em jogo.',
+        { fontSize:'12px', color:'#a8a08c', fontFamily: FONT_BTN, fontStyle:'italic', align:'center' }
+      ).setOrigin(0.5, 0);
+      this.upgradePanelContent.add(empty);
+    }
+  }
+
+  activateUpgrade(id) {
+    const def = UPGRADE_DEFS[id];
+    if (!def || !this.gameScene) return;
+    if (id === 'starting_gold') return;
+    const cost = UPGRADE_ACTIVATION_COST[id] || 0;
+    const g = this.gameScene;
+    if (g.state.gold < cost) return;
+    if (window.TD_ACTIVE_UPGRADES[id]) return;
+    g.state.gold -= cost;
+    window.TD_ACTIVE_UPGRADES[id] = true;
+    g.events.emit('stateUpdate', g.state);
+    this.showFloatingText(`+${def.name} ATIVO!`);
+    this.showUpgradeBadgeOnTowers(def.tower);
+    this.refreshUpgradePanel();
+  }
+
+  showFloatingText(text) {
+    const t = this.add.text(W/2, H/2, text, {
+      fontSize: '28px', color: '#ffd966', fontFamily: FONT_TITLE, fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(80);
+    t.setShadow(0, 0, '#ffae00', 18, true, true);
+    if (!this._floatTexts) this._floatTexts = [];
+    this._floatTexts.push(t);
+    this.tweens.add({
+      targets: t, y: H/2 - 80, alpha: 0, duration: 1500, ease: 'Cubic.Out',
+      onComplete: () => {
+        if (t && t.scene) t.destroy();
+        if (this._floatTexts) this._floatTexts = this._floatTexts.filter(x => x !== t);
+      }
+    });
+  }
+
+  showUpgradeBadgeOnTowers(towerKey) {
+    if (!this.gameScene) return;
+    const iconMap = { archer: '🏹', dwarf: '🔨', mage: '🔮', global: '💰' };
+    const icon = iconMap[towerKey] || '✨';
+    const towers = this.gameScene.towers || [];
+    const targets = towerKey === 'global' ? towers : towers.filter(t => t.type === towerKey);
+    if (!this._badgeTexts) this._badgeTexts = [];
+    targets.forEach(t => {
+      const badge = this.gameScene.add.text(t.x, t.y - 36, icon, { fontSize: '20px' })
+        .setOrigin(0.5).setDepth(70);
+      this._badgeTexts.push(badge);
+      const tw = this.gameScene.tweens.add({
+        targets: badge, alpha: { from: 1, to: 0.3 }, yoyo: true, repeat: 5, duration: 180,
+        onComplete: () => {
+          if (badge && badge.scene) badge.destroy();
+          if (this._badgeTexts) this._badgeTexts = this._badgeTexts.filter(x => x !== badge);
+        }
+      });
+    });
+  }
+
+
 
   buildTowerPanel() {
     const panelW = 72;
