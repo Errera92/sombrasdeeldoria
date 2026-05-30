@@ -1910,6 +1910,15 @@ class UIScene extends Phaser.Scene {
     this.closeMenu();
     this.tweens.killAll();
     this.time.removeAllEvents();
+    // limpa painel de upgrades, badges e floating texts.
+    if (this.upgradePanel && this.upgradePanel.scene) this.upgradePanel.destroy();
+    this.upgradePanel = null;
+    this.upgradePanelContent = null;
+    this.upgradePanelOpen = false;
+    for (const t of (this._floatTexts || [])) if (t && t.scene) t.destroy();
+    for (const b of (this._badgeTexts || [])) if (b && b.scene) b.destroy();
+    this._floatTexts = [];
+    this._badgeTexts = [];
     this.gameScene = null;
     this.refreshHandler = null;
     this.towerSelHandler = null;
