@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpgrades } from "@/hooks/useUpgrades";
+import { useMissions } from "@/hooks/useMission";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/play")({
@@ -12,7 +14,8 @@ export const Route = createFileRoute("/play")({
 function PlayPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const { profile, levels, multipliers, submitResult } = useUpgrades(user?.id);
+  const { profile, levels, multipliers, refresh: refreshProfile } = useUpgrades(user?.id);
+  const { submitResult: submitMission } = useMissions(user?.id);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const sentBootstrapRef = useRef(false);
 
@@ -44,21 +47,41 @@ function PlayPage() {
   }, [profile?.gems, profile?.nickname]);
 
   useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      // Only accept messages from our iframe at the same origin
+    const onMsg = async (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
       if (e.source !== iframeRef.current?.contentWindow) return;
       const d = e.data;
       if (!d || typeof d !== "object") return;
       if (d.type === "td:stageComplete") {
-        submitResult(Number(d.wave) | 0, Number(d.gold) | 0, !!d.victory);
+        const result = await submitMission({
+          wave:              Number(d.wave) | 0,
+          gold:              Number(d.gold) | 0,
+          victory:           !!d.victory,
+          stageId:           Number(d.stageId) | 0,
+          phaseIndex:        Number(d.phaseIndex) | 0,
+          tookDamage:        !!d.tookDamage,
+          towersUsed:        Number(d.towersUsed) | 0,
+          phaseSeconds:      Number(d.phaseSeconds) | 0,
+          enemiesKilled:     Number(d.enemiesKilled) | 0,
+          goldSpent:         Number(d.goldSpent) | 0,
+          usedUpgrade:       !!d.usedUpgrade,
+          stageComplete:     !!d.stageComplete,
+          allPhasesNoDamage: !!d.allPhasesNoDamage,
+        });
+        if (result?.earned && result.earned > 0) toast.success(`+${result.earned} 💎`);
+        if (result?.missionsEarned?.length) {
+          for (const m of result.missionsEarned) {
+            toast.success(`${m.icon} ${m.title} — +${m.gems} 💎`);
+          }
+        }
+        refreshProfile();
       } else if (d.type === "td:exit") {
         navigate({ to: "/menu" });
       }
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [submitResult, navigate]);
+  }, [submitMission, refreshProfile, navigate]);
 
   if (loading || !user) return <div className="h-screen w-screen flex items-center justify-center bg-black text-amber-200">Carregando…</div>;
 
