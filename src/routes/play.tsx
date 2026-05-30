@@ -34,7 +34,7 @@ function PlayPage() {
     send();
     iframe.addEventListener("load", send);
     return () => iframe.removeEventListener("load", send);
-  }, [profile, multipliers]);
+  }, [profile, levels, multipliers]);
 
   useEffect(() => {
     if (!profile) return;
