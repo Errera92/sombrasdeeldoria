@@ -848,6 +848,14 @@ class GameScene extends Phaser.Scene {
       stageName: this.stage.name, totalWaves: this.WAVES.length,
       phase: this.phaseId + 1, totalPhases: this.stage.phases.length,
       speed: 1, freezeUntil: 0, wallUntil: 0,
+      // mission tracking metrics (per phase, except phaseNoDamageHistory)
+      tookDamage: false,
+      towersUsed: 0,
+      phaseStartTime: Date.now(),
+      enemiesKilled: 0,
+      goldSpent: 0,
+      usedUpgrade: false,
+      phaseNoDamageHistory: [],
     };
     this.handleSpeedChange = this.handleSpeedChange.bind(this);
     this.events.once('shutdown', this.shutdownGame, this);
