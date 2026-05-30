@@ -69,7 +69,7 @@ function LoginPage() {
         style={{ backgroundImage: "radial-gradient(circle at 30% 20%, rgba(255,200,100,0.15), transparent 50%), radial-gradient(circle at 70% 80%, rgba(180,80,255,0.1), transparent 50%)" }} />
       <div className="relative w-full max-w-md rounded-xl border border-amber-900/40 bg-black/70 p-8 shadow-2xl backdrop-blur">
         <h1 className="text-center font-serif text-3xl font-bold tracking-wide text-amber-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-          Sombras de Eldoria
+          Sombras de Eldoria — Tower Defense
         </h1>
         <p className="mt-1 text-center text-sm text-amber-100/60 italic">
           {mode === "signin" ? "Entre no reino" : "Forje sua lenda"}
