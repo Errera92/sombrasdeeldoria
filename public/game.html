@@ -1126,7 +1126,7 @@ class GameScene extends Phaser.Scene {
     const slot = this.slots[slotIndex];
     const def = TOWER_TYPES[typeKey];
     if (!slot || !def) return;
-    const rangeMul = (window.TD_MULT && window.TD_MULT.range) || 1;
+    const rangeMul = window.getActiveMult('range', typeKey);
     const r = def.range * rangeMul;
     const ring = this.add.circle(slot.x, slot.y, r, def.color, 0.2)
       .setStrokeStyle(2, def.color, 0.7).setDepth(15);
