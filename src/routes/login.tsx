@@ -7,7 +7,16 @@ import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
-  head: () => ({ meta: [{ title: "Entrar — Sombras de Eldoria" }] }),
+  head: () => ({
+    meta: [
+      { title: "Entrar — Sombras de Eldoria Tower Defense" },
+      { name: "description", content: "Acesse sua conta de Sombras de Eldoria e continue defendendo o reino. Crie sua conta gratuita e comece a jogar." },
+      { property: "og:title", content: "Entrar — Sombras de Eldoria Tower Defense" },
+      { property: "og:description", content: "Acesse sua conta e continue defendendo o reino contra as hordas das trevas." },
+      { property: "og:url", content: "https://sombrasdeeldoria.lovable.app/login" },
+    ],
+    links: [{ rel: "canonical", href: "https://sombrasdeeldoria.lovable.app/login" }],
+  }),
 });
 
 function LoginPage() {
