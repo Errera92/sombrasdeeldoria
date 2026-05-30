@@ -1,80 +1,216 @@
-// Catálogo central de upgrades permanentes (loja com gems)
-export type UpgradeStat = "damage" | "range" | "fireRate" | "goldBonus" | "startingGold";
+export type TowerType = "archer" | "dwarf" | "mage" | "global";
+export type UpgradeStat = "damage" | "range" | "fireRate" | "splash" | "goldBonus" | "startingGold";
 
 export interface UpgradeDef {
   id: string;
+  towerType: TowerType;
   name: string;
   icon: string;
   stat: UpgradeStat;
   maxLevel: number;
-  costPerLevel: number; // em gems
-  effectPerLevel: number; // valor adicionado por nível
+  costPerLevel: number;
+  effectPerLevel: number;
   description: string;
-  /** "percent" -> multiplicador (1 + level*effect); "flat" -> additive */
   kind: "percent" | "flat";
+  sortOrder: number;
 }
 
 export const UPGRADES: UpgradeDef[] = [
+  // Archer
   {
-    id: "tower_damage",
-    name: "Dano Base",
-    icon: "⚔️",
+    id: "archer_damage",
+    towerType: "archer",
+    name: "Lâminas Élfica",
+    icon: "🏹",
     stat: "damage",
+    maxLevel: 5,
+    costPerLevel: 60,
+    effectPerLevel: 0.12,
+    description: "+12% dano do Arqueiro",
+    kind: "percent",
+    sortOrder: 1,
+  },
+  {
+    id: "archer_range",
+    towerType: "archer",
+    name: "Visão Aguçada",
+    icon: "👁️",
+    stat: "range",
     maxLevel: 5,
     costPerLevel: 50,
     effectPerLevel: 0.1,
-    description: "+10% de dano em todas as torres",
+    description: "+10% alcance do Arqueiro",
     kind: "percent",
+    sortOrder: 2,
   },
   {
-    id: "tower_range",
-    name: "Alcance",
-    icon: "🎯",
-    stat: "range",
-    maxLevel: 5,
-    costPerLevel: 40,
-    effectPerLevel: 0.08,
-    description: "+8% de alcance em todas as torres",
-    kind: "percent",
-  },
-  {
-    id: "tower_firerate",
-    name: "Velocidade de Ataque",
-    icon: "💨",
+    id: "archer_firerate",
+    towerType: "archer",
+    name: "Corda Reforçada",
+    icon: "⚡",
     stat: "fireRate",
     maxLevel: 5,
-    costPerLevel: 60,
-    effectPerLevel: 0.1,
-    description: "+10% de velocidade de ataque",
+    costPerLevel: 70,
+    effectPerLevel: 0.12,
+    description: "+12% velocidade do Arqueiro",
     kind: "percent",
+    sortOrder: 3,
+  },
+  // Dwarf
+  {
+    id: "dwarf_damage",
+    towerType: "dwarf",
+    name: "Martelo Rúnico",
+    icon: "🔨",
+    stat: "damage",
+    maxLevel: 5,
+    costPerLevel: 80,
+    effectPerLevel: 0.15,
+    description: "+15% dano do Anão",
+    kind: "percent",
+    sortOrder: 4,
   },
   {
+    id: "dwarf_range",
+    towerType: "dwarf",
+    name: "Catapulta Anã",
+    icon: "🪨",
+    stat: "range",
+    maxLevel: 5,
+    costPerLevel: 60,
+    effectPerLevel: 0.08,
+    description: "+8% alcance do Anão",
+    kind: "percent",
+    sortOrder: 5,
+  },
+  {
+    id: "dwarf_firerate",
+    towerType: "dwarf",
+    name: "Forja Acelerada",
+    icon: "🔥",
+    stat: "fireRate",
+    maxLevel: 5,
+    costPerLevel: 90,
+    effectPerLevel: 0.1,
+    description: "+10% velocidade do Anão",
+    kind: "percent",
+    sortOrder: 6,
+  },
+  // Mage
+  {
+    id: "mage_damage",
+    towerType: "mage",
+    name: "Cristal Arcano",
+    icon: "💎",
+    stat: "damage",
+    maxLevel: 5,
+    costPerLevel: 100,
+    effectPerLevel: 0.15,
+    description: "+15% dano do Mago",
+    kind: "percent",
+    sortOrder: 7,
+  },
+  {
+    id: "mage_range",
+    towerType: "mage",
+    name: "Orbe Expandido",
+    icon: "🔮",
+    stat: "range",
+    maxLevel: 5,
+    costPerLevel: 80,
+    effectPerLevel: 0.12,
+    description: "+12% alcance do Mago",
+    kind: "percent",
+    sortOrder: 8,
+  },
+  {
+    id: "mage_splash",
+    towerType: "mage",
+    name: "Onda de Choque",
+    icon: "💥",
+    stat: "splash",
+    maxLevel: 5,
+    costPerLevel: 120,
+    effectPerLevel: 0.15,
+    description: "+15% raio de splash do Mago",
+    kind: "percent",
+    sortOrder: 9,
+  },
+  // Global
+  {
     id: "gold_bonus",
+    towerType: "global",
     name: "Ouro Extra",
     icon: "💰",
     stat: "goldBonus",
     maxLevel: 3,
     costPerLevel: 80,
     effectPerLevel: 0.15,
-    description: "+15% de ouro por inimigo",
+    description: "+15% ouro por inimigo",
     kind: "percent",
+    sortOrder: 10,
   },
   {
     id: "starting_gold",
+    towerType: "global",
     name: "Ouro Inicial",
     icon: "🪙",
     stat: "startingGold",
     maxLevel: 3,
     costPerLevel: 100,
     effectPerLevel: 50,
-    description: "+50 de ouro inicial",
+    description: "+50 ouro inicial por fase",
     kind: "flat",
+    sortOrder: 11,
   },
 ];
 
+export const UPGRADES_BY_TOWER: Record<TowerType, UpgradeDef[]> = {
+  archer: UPGRADES.filter((u) => u.towerType === "archer"),
+  dwarf: UPGRADES.filter((u) => u.towerType === "dwarf"),
+  mage: UPGRADES.filter((u) => u.towerType === "mage"),
+  global: UPGRADES.filter((u) => u.towerType === "global"),
+};
+
 export type UpgradeLevels = Record<string, number>;
 
-export function getMultiplier(stat: UpgradeStat, levels: UpgradeLevels): number {
+export function getTowerMultipliers(towerType: TowerType, levels: UpgradeLevels, globalLevels: UpgradeLevels) {
+  const relevant = [
+    ...UPGRADES.filter((u) => u.towerType === towerType),
+    ...UPGRADES.filter((u) => u.towerType === "global"),
+  ];
+
+  const result: Record<string, number> = {
+    damage: 1,
+    range: 1,
+    fireRate: 1,
+    splash: 1,
+    goldBonus: 1,
+    startingGold: 0,
+  };
+
+  for (const def of relevant) {
+    const lvl = def.towerType === "global" ? (globalLevels[def.id] ?? 0) : (levels[def.id] ?? 0);
+    if (def.kind === "percent") {
+      result[def.stat] = (result[def.stat] ?? 1) + def.effectPerLevel * lvl;
+    } else {
+      result[def.stat] = (result[def.stat] ?? 0) + def.effectPerLevel * lvl;
+    }
+  }
+  return result;
+}
+
+export function computeMultipliers(levels: UpgradeLevels) {
+  return {
+    damage: getGlobalStat("damage", levels),
+    range: getGlobalStat("range", levels),
+    fireRate: getGlobalStat("fireRate", levels),
+    goldBonus: getGlobalStat("goldBonus", levels),
+    startingGoldBonus: getGlobalStat("startingGold", levels),
+  };
+}
+
+function getGlobalStat(stat: string, levels: UpgradeLevels): number {
   let value = stat === "startingGold" ? 0 : 1;
   for (const def of UPGRADES) {
     if (def.stat !== stat) continue;
@@ -83,14 +219,4 @@ export function getMultiplier(stat: UpgradeStat, levels: UpgradeLevels): number 
     else value += def.effectPerLevel * lvl;
   }
   return value;
-}
-
-export function computeMultipliers(levels: UpgradeLevels) {
-  return {
-    damage: getMultiplier("damage", levels),
-    range: getMultiplier("range", levels),
-    fireRate: getMultiplier("fireRate", levels),
-    goldBonus: getMultiplier("goldBonus", levels),
-    startingGoldBonus: getMultiplier("startingGold", levels),
-  };
 }
