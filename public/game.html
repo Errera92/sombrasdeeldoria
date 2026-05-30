@@ -1755,7 +1755,7 @@ class GameScene extends Phaser.Scene {
     for (const e of this.activeEnemies) {
       if (!e.alive) continue;
       const d = Math.hypot(e.container.x - tower.x, e.container.y - tower.y);
-      if (d <= tower.def.range * ((window.TD_MULT && window.TD_MULT.range) || 1) && e.pathIndex > bestProg) { best = e; bestProg = e.pathIndex; }
+      if (d <= tower.def.range * window.getActiveMult('range', tower.type) && e.pathIndex > bestProg) { best = e; bestProg = e.pathIndex; }
     }
     return best;
   }
