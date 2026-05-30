@@ -987,17 +987,36 @@ class GameScene extends Phaser.Scene {
     catch (_) { try { if (group.destroy) group.destroy(); } catch (_) {} }
   }
 
+  buildPhasePayload(victory) {
+    const s = this.state || {};
+    const isFinalPhase = this.phaseId >= this.stage.phases.length - 1;
+    const stageComplete = !!victory && isFinalPhase;
+    // include current phase outcome into history without mutating state
+    const history = (s.phaseNoDamageHistory || []).concat(victory ? [!s.tookDamage] : []);
+    const allNoDamage = stageComplete && history.length === this.stage.phases.length && history.every(v => v);
+    return {
+      type: 'td:stageComplete',
+      wave: s.wave | 0,
+      gold: s.gold | 0,
+      victory: !!victory,
+      stage: this.stage && this.stage.name,
+      phase: this.phase && this.phase.name,
+      stageId: this.stage.id,
+      phaseIndex: this.phaseId,
+      tookDamage: !!s.tookDamage,
+      towersUsed: s.towersUsed | 0,
+      phaseSeconds: Math.max(0, Math.round((Date.now() - (s.phaseStartTime || Date.now())) / 1000)),
+      enemiesKilled: s.enemiesKilled | 0,
+      goldSpent: s.goldSpent | 0,
+      usedUpgrade: !!s.usedUpgrade,
+      stageComplete,
+      allPhasesNoDamage: allNoDamage,
+    };
+  }
+
   exitToGameOver(data) {
     try {
-      const s = this.state || {};
-      window.TD_POST && window.TD_POST({
-        type: 'td:stageComplete',
-        wave: s.wave | 0,
-        gold: s.gold | 0,
-        victory: !!(data && data.victory),
-        stage: this.stage && this.stage.name,
-        phase: this.phase && this.phase.name,
-      });
+      window.TD_POST && window.TD_POST(this.buildPhasePayload(!!(data && data.victory)));
     } catch (_) {}
     const payload = Object.assign({}, data, {
       stageId: this.stage.id,
