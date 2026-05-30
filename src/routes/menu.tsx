@@ -55,7 +55,7 @@ function MenuPage() {
         </header>
 
         <h1 className="mt-12 text-center font-serif text-5xl font-bold tracking-wider text-amber-300 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
-          Sombras de Eldoria
+          Sombras de Eldoria — Tower Defense
         </h1>
         <p className="mt-2 text-center italic text-amber-100/60">As trevas avançam. Defenda o reino.</p>
 
