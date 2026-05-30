@@ -848,6 +848,14 @@ class GameScene extends Phaser.Scene {
       stageName: this.stage.name, totalWaves: this.WAVES.length,
       phase: this.phaseId + 1, totalPhases: this.stage.phases.length,
       speed: 1, freezeUntil: 0, wallUntil: 0,
+      // mission tracking metrics (per phase, except phaseNoDamageHistory)
+      tookDamage: false,
+      towersUsed: 0,
+      phaseStartTime: Date.now(),
+      enemiesKilled: 0,
+      goldSpent: 0,
+      usedUpgrade: false,
+      phaseNoDamageHistory: [],
     };
     this.handleSpeedChange = this.handleSpeedChange.bind(this);
     this.events.once('shutdown', this.shutdownGame, this);
@@ -927,6 +935,13 @@ class GameScene extends Phaser.Scene {
     this.state.phase = phaseIndex + 1;
     this.state.totalPhases = this.stage.phases.length;
     this.state.stageName = this.stage.name;
+    // reset per-phase mission metrics (history is preserved across phases)
+    this.state.tookDamage = false;
+    this.state.towersUsed = 0;
+    this.state.phaseStartTime = Date.now();
+    this.state.enemiesKilled = 0;
+    this.state.goldSpent = 0;
+    this.state.usedUpgrade = false;
 
     const ui = this.scene.get('UIScene');
     if (ui && ui.updateStageTitle) ui.updateStageTitle();
@@ -972,17 +987,36 @@ class GameScene extends Phaser.Scene {
     catch (_) { try { if (group.destroy) group.destroy(); } catch (_) {} }
   }
 
+  buildPhasePayload(victory) {
+    const s = this.state || {};
+    const isFinalPhase = this.phaseId >= this.stage.phases.length - 1;
+    const stageComplete = !!victory && isFinalPhase;
+    // include current phase outcome into history without mutating state
+    const history = (s.phaseNoDamageHistory || []).concat(victory ? [!s.tookDamage] : []);
+    const allNoDamage = stageComplete && history.length === this.stage.phases.length && history.every(v => v);
+    return {
+      type: 'td:stageComplete',
+      wave: s.wave | 0,
+      gold: s.gold | 0,
+      victory: !!victory,
+      stage: this.stage && this.stage.name,
+      phase: this.phase && this.phase.name,
+      stageId: this.stage.id,
+      phaseIndex: this.phaseId,
+      tookDamage: !!s.tookDamage,
+      towersUsed: s.towersUsed | 0,
+      phaseSeconds: Math.max(0, Math.round((Date.now() - (s.phaseStartTime || Date.now())) / 1000)),
+      enemiesKilled: s.enemiesKilled | 0,
+      goldSpent: s.goldSpent | 0,
+      usedUpgrade: !!s.usedUpgrade,
+      stageComplete,
+      allPhasesNoDamage: allNoDamage,
+    };
+  }
+
   exitToGameOver(data) {
     try {
-      const s = this.state || {};
-      window.TD_POST && window.TD_POST({
-        type: 'td:stageComplete',
-        wave: s.wave | 0,
-        gold: s.gold | 0,
-        victory: !!(data && data.victory),
-        stage: this.stage && this.stage.name,
-        phase: this.phase && this.phase.name,
-      });
+      window.TD_POST && window.TD_POST(this.buildPhasePayload(!!(data && data.victory)));
     } catch (_) {}
     const payload = Object.assign({}, data, {
       stageId: this.stage.id,
@@ -1218,6 +1252,8 @@ class GameScene extends Phaser.Scene {
     const def = TOWER_TYPES[typeKey];
     if (!def || slot.tower || this.state.gold < def.cost) return;
     this.state.gold -= def.cost;
+    this.state.goldSpent += def.cost;
+    this.state.towersUsed++;
 
     slot.container.disableInteractive();
     slot.ring.setVisible(false); slot.cross.setVisible(false);
@@ -1526,6 +1562,7 @@ class GameScene extends Phaser.Scene {
     if (item.until > now) return; // cooldown
     if (this.state.gold < item.cost) return;
     this.state.gold -= item.cost;
+    this.state.goldSpent += item.cost;
     item.until = now + item.cooldown;
 
     if (key === 'fire') {
@@ -1731,21 +1768,18 @@ class GameScene extends Phaser.Scene {
         if (hasNextPhase) {
           // reporta progresso parcial e avança fase em sequência (sem recriar a cena)
           try {
-            window.TD_POST && window.TD_POST({
-              type: 'td:stageComplete',
-              wave: this.state.wave | 0,
-              gold: this.state.gold | 0,
-              victory: true,
-              stage: this.stage.name,
-              phase: this.phase && this.phase.name,
-              partial: true,
-            });
+            const payload = this.buildPhasePayload(true);
+            payload.partial = true;
+            window.TD_POST && window.TD_POST(payload);
           } catch (_) {}
+          // acumula histórico de "fase sem dano" antes de avançar
+          this.state.phaseNoDamageHistory.push(!this.state.tookDamage);
           this.events.emit('stateUpdate', this.state);
           this.time.delayedCall(800, () => this.loadPhase(this.phaseId + 1));
         } else {
           // última fase: vitória total
           this.state.victory = true;
+          this.state.phaseNoDamageHistory.push(!this.state.tookDamage);
           this.events.emit('stateUpdate', this.state);
           this.exitToGameOver({ victory: true, wave: this.state.wave, stage: this.stage.name });
         }
@@ -1796,6 +1830,7 @@ class GameScene extends Phaser.Scene {
       this.time.delayedCall(60, () => { if (e.alive && e.body.setFillStyle) e.body.setFillStyle(orig); });
     }
     if (e.hp <= 0) {
+      this.state.enemiesKilled++;
       e.alive = false;
       this.spawnSpark(e.container.x, e.container.y, e.typeDef.spark, 12);
       this.state.gold += Math.round(e.reward * window.getActiveMult('goldBonus', 'global'));
@@ -1810,6 +1845,7 @@ class GameScene extends Phaser.Scene {
     e.alive = false;
     this.state.enemiesAlive--;
     this.state.hp -= 1;
+    this.state.tookDamage = true;
     e.container.destroy();
     this.cameras.main.flash(120, 80, 0, 0);
     this.events.emit('stateUpdate', this.state);
@@ -2143,6 +2179,8 @@ class UIScene extends Phaser.Scene {
     if (g.state.gold < cost) return;
     if (window.TD_ACTIVE_UPGRADES[id]) return;
     g.state.gold -= cost;
+    g.state.goldSpent += cost;
+    g.state.usedUpgrade = true;
     window.TD_ACTIVE_UPGRADES[id] = true;
     g.events.emit('stateUpdate', g.state);
     this.showFloatingText(`+${def.name} ATIVO!`);

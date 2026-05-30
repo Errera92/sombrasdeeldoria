@@ -46,6 +46,6 @@ export const submitPhaseResult = createServerFn({ method: 'POST' })
       highScore:       r?.high_score  ?? 0,
       score:           r?.score       ?? 0,
       earned:          r?.earned      ?? 0,
-      missionsEarned:  r?.missions_earned ?? [],
+      missionsEarned:  (r?.missions_earned as PhaseResultResponse['missionsEarned']) ?? [],
     }
   })

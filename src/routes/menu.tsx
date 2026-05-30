@@ -52,6 +52,7 @@ function MenuPage() {
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
           <MenuButton to="/play" label="Jogar" icon="⚔️" desc="Iniciar campanha" primary />
+          <MenuButton to="/missions" label="Missões" icon="📋" desc="Objetivos e recompensas" />
           <MenuButton to="/shop" label="Loja de Upgrades" icon="🛒" desc="Gaste seus gems" />
           <MenuButton to="/ranking" label="Ranking Global" icon="🏆" desc="Top 20 heróis" />
           <MenuButton to="/menu" label={`Recorde: ${profile?.high_score ?? 0}`} icon="📜" desc="Sua maior pontuação" disabled />
