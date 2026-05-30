@@ -1617,7 +1617,7 @@ class GameScene extends Phaser.Scene {
 
     // torres atiram (escala com speed)
     for (const t of this.towers) {
-      if (time - t.lastFire < t.def.fireRate / (this.state.speed * ((window.TD_MULT && window.TD_MULT.fireRate) || 1))) continue;
+      if (time - t.lastFire < t.def.fireRate / (this.state.speed * window.getActiveMult('fireRate', t.type))) continue;
       const target = this.findTarget(t);
       if (target) {
         this.fireProjectile(t, target);
