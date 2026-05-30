@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as PlayRouteImport } from './routes/play'
+import { Route as MissionsRouteImport } from './routes/missions'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
@@ -29,6 +30,11 @@ const RankingRoute = RankingRouteImport.update({
 const PlayRoute = PlayRouteImport.update({
   id: '/play',
   path: '/play',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MissionsRoute = MissionsRouteImport.update({
+  id: '/missions',
+  path: '/missions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MenuRoute = MenuRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
+  '/missions': typeof MissionsRoute
   '/play': typeof PlayRoute
   '/ranking': typeof RankingRoute
   '/shop': typeof ShopRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
+  '/missions': typeof MissionsRoute
   '/play': typeof PlayRoute
   '/ranking': typeof RankingRoute
   '/shop': typeof ShopRoute
@@ -68,22 +76,39 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
+  '/missions': typeof MissionsRoute
   '/play': typeof PlayRoute
   '/ranking': typeof RankingRoute
   '/shop': typeof ShopRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/menu' | '/play' | '/ranking' | '/shop'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/menu'
+    | '/missions'
+    | '/play'
+    | '/ranking'
+    | '/shop'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/menu' | '/play' | '/ranking' | '/shop'
-  id: '__root__' | '/' | '/login' | '/menu' | '/play' | '/ranking' | '/shop'
+  to: '/' | '/login' | '/menu' | '/missions' | '/play' | '/ranking' | '/shop'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/menu'
+    | '/missions'
+    | '/play'
+    | '/ranking'
+    | '/shop'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
+  MissionsRoute: typeof MissionsRoute
   PlayRoute: typeof PlayRoute
   RankingRoute: typeof RankingRoute
   ShopRoute: typeof ShopRoute
@@ -110,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/play'
       fullPath: '/play'
       preLoaderRoute: typeof PlayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/missions': {
+      id: '/missions'
+      path: '/missions'
+      fullPath: '/missions'
+      preLoaderRoute: typeof MissionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/menu': {
@@ -140,6 +172,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
+  MissionsRoute: MissionsRoute,
   PlayRoute: PlayRoute,
   RankingRoute: RankingRoute,
   ShopRoute: ShopRoute,
