@@ -8,7 +8,16 @@ import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/missions")({
   component: MissionsPage,
-  head: () => ({ meta: [{ title: "Missões — Sombras de Eldoria" }] }),
+  head: () => ({
+    meta: [
+      { title: "Missões — Sombras de Eldoria Tower Defense" },
+      { name: "description", content: "Complete missões de combate, economia e maestria em Sombras de Eldoria e ganhe gems para desbloquear upgrades permanentes." },
+      { property: "og:title", content: "Missões e Recompensas — Sombras de Eldoria" },
+      { property: "og:description", content: "Complete missões para ganhar gems e desbloquear upgrades permanentes." },
+      { property: "og:url", content: "https://sombrasdeeldoria.lovable.app/missions" },
+    ],
+    links: [{ rel: "canonical", href: "https://sombrasdeeldoria.lovable.app/missions" }],
+  }),
 });
 
 function MissionsPage() {
