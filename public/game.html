@@ -128,8 +128,60 @@
 // Multiplicadores vindos da loja de upgrades (gems). Aplicados aos valores BASE
 // das torres em runtime. Tudo neutro (1.0 / 0) até o shell enviar o bootstrap.
 window.TD_MULT = { damage: 1, range: 1, fireRate: 1, goldBonus: 1, startingGoldBonus: 0 };
+window.TD_TOWER_UPGRADES = window.TD_TOWER_UPGRADES || {}; // níveis comprados na loja
+window.TD_ACTIVE_UPGRADES = {}; // ativados na partida atual
 window.TD_PLAYER = { nickname: '', gems: 0 };
 window.TD_PARENT_ORIGIN = '*';
+
+// Custo em ouro para ativar cada upgrade durante a partida.
+const UPGRADE_ACTIVATION_COST = {
+  archer_damage:   40,
+  archer_range:    35,
+  archer_firerate: 45,
+  dwarf_damage:    50,
+  dwarf_range:     40,
+  dwarf_firerate:  55,
+  mage_damage:     60,
+  mage_range:      55,
+  mage_splash:     70,
+  gold_bonus:      50,
+  starting_gold:   0,
+};
+
+// Definição estática de cada upgrade: stat afetado, torre alvo e efeito por nível.
+const UPGRADE_DEFS = {
+  archer_damage:   { stat: 'damage',    tower: 'archer', effect: 0.12, icon: '🏹', name: 'Lâminas Élfica' },
+  archer_range:    { stat: 'range',     tower: 'archer', effect: 0.10, icon: '👁️', name: 'Visão Aguçada' },
+  archer_firerate: { stat: 'fireRate',  tower: 'archer', effect: 0.12, icon: '⚡', name: 'Corda Reforçada' },
+  dwarf_damage:    { stat: 'damage',    tower: 'dwarf',  effect: 0.15, icon: '🔨', name: 'Martelo Rúnico' },
+  dwarf_range:     { stat: 'range',     tower: 'dwarf',  effect: 0.08, icon: '🪨', name: 'Catapulta Anã' },
+  dwarf_firerate:  { stat: 'fireRate',  tower: 'dwarf',  effect: 0.10, icon: '🔥', name: 'Forja Acelerada' },
+  mage_damage:     { stat: 'damage',    tower: 'mage',   effect: 0.15, icon: '💎', name: 'Cristal Arcano' },
+  mage_range:      { stat: 'range',     tower: 'mage',   effect: 0.12, icon: '🔮', name: 'Orbe Expandido' },
+  mage_splash:     { stat: 'splash',    tower: 'mage',   effect: 0.15, icon: '💥', name: 'Onda de Choque' },
+  gold_bonus:      { stat: 'goldBonus', tower: 'global', effect: 0.15, icon: '💰', name: 'Ouro Extra' },
+  starting_gold:   { stat: 'startingGold', tower: 'global', effect: 50, icon: '🪙', name: 'Ouro Inicial' },
+};
+
+// Multiplicador a partir dos upgrades ATIVOS (excluindo TD_MULT — que vem da loja
+// e agora só usamos para startingGoldBonus). Para cada upgrade ativo cujo stat e
+// torre batem, soma effect * nível comprado.
+window.getActiveMult = function (stat, towerType) {
+  let mult = stat === 'startingGold' ? 0 : 1;
+  const active = window.TD_ACTIVE_UPGRADES || {};
+  const owned = window.TD_TOWER_UPGRADES || {};
+  for (const id of Object.keys(UPGRADE_DEFS)) {
+    const def = UPGRADE_DEFS[id];
+    if (def.stat !== stat) continue;
+    if (def.tower !== towerType && def.tower !== 'global') continue;
+    if (!active[id]) continue;
+    const lvl = owned[id] | 0;
+    if (lvl <= 0) continue;
+    mult += def.effect * lvl;
+  }
+  return mult;
+};
+
 window.TD_POST = function (payload) {
   try { window.parent && window.parent.postMessage(payload, window.TD_PARENT_ORIGIN || '*'); } catch (_) {}
 };
@@ -154,6 +206,7 @@ window.addEventListener('message', (ev) => {
     } else if (d.type === 'td:bootstrap') {
       window.TD_TOWER_UPGRADES = window.TD_TOWER_UPGRADES || {};
     }
+    if (d.type === 'td:bootstrap') window.TD_ACTIVE_UPGRADES = {};
     if (typeof d.nickname === 'string') window.TD_PLAYER.nickname = d.nickname;
     if (typeof d.gems === 'number') window.TD_PLAYER.gems = d.gems;
     try {
@@ -863,6 +916,8 @@ class GameScene extends Phaser.Scene {
     // (ouro acumulado da fase anterior é descartado ao trocar de fase).
     this.gold = 150 + ((window.TD_MULT && window.TD_MULT.startingGoldBonus) | 0);
     this.state.gold = this.gold;
+    // reset dos upgrades ativados: cada fase recomeça com nenhum ativo.
+    window.TD_ACTIVE_UPGRADES = {};
     this.currentWave = 0;
     this.state.wave = 0;
     this.state.waveActive = false;
@@ -875,6 +930,7 @@ class GameScene extends Phaser.Scene {
 
     const ui = this.scene.get('UIScene');
     if (ui && ui.updateStageTitle) ui.updateStageTitle();
+    if (ui && ui.refreshUpgradePanel) ui.refreshUpgradePanel();
     this.events.emit('stateUpdate', this.state);
   }
 
@@ -906,6 +962,8 @@ class GameScene extends Phaser.Scene {
     this.towers = [];
     this.slots = [];
     this.spawnTimer = null;
+    // reset upgrades ativados ao encerrar a partida.
+    window.TD_ACTIVE_UPGRADES = {};
   }
 
   clearGroup(group) {
@@ -1073,7 +1131,7 @@ class GameScene extends Phaser.Scene {
     const slot = this.slots[slotIndex];
     const def = TOWER_TYPES[typeKey];
     if (!slot || !def) return;
-    const rangeMul = (window.TD_MULT && window.TD_MULT.range) || 1;
+    const rangeMul = window.getActiveMult('range', typeKey);
     const r = def.range * rangeMul;
     const ring = this.add.circle(slot.x, slot.y, r, def.color, 0.2)
       .setStrokeStyle(2, def.color, 0.7).setDepth(15);
@@ -1564,7 +1622,7 @@ class GameScene extends Phaser.Scene {
 
     // torres atiram (escala com speed)
     for (const t of this.towers) {
-      if (time - t.lastFire < t.def.fireRate / (this.state.speed * ((window.TD_MULT && window.TD_MULT.fireRate) || 1))) continue;
+      if (time - t.lastFire < t.def.fireRate / (this.state.speed * window.getActiveMult('fireRate', t.type))) continue;
       const target = this.findTarget(t);
       if (target) {
         this.fireProjectile(t, target);
@@ -1702,7 +1760,7 @@ class GameScene extends Phaser.Scene {
     for (const e of this.activeEnemies) {
       if (!e.alive) continue;
       const d = Math.hypot(e.container.x - tower.x, e.container.y - tower.y);
-      if (d <= tower.def.range * ((window.TD_MULT && window.TD_MULT.range) || 1) && e.pathIndex > bestProg) { best = e; bestProg = e.pathIndex; }
+      if (d <= tower.def.range * window.getActiveMult('range', tower.type) && e.pathIndex > bestProg) { best = e; bestProg = e.pathIndex; }
     }
     return best;
   }
@@ -1713,12 +1771,12 @@ class GameScene extends Phaser.Scene {
       x: tower.x + fp.x,
       y: tower.y + fp.y,
       target,
-      damage: tower.def.damage * ((window.TD_MULT && window.TD_MULT.damage) || 1),
+      damage: tower.def.damage * window.getActiveMult('damage', tower.type),
       speed: 540,
       radius: tower.type === 'archer' ? 4 : 6,
       alive: true,
       color: tower.def.projColor,
-      splash: tower.def.splash,
+      splash: tower.def.splash ? tower.def.splash * window.getActiveMult('splash', tower.type) : tower.def.splash,
       kind: tower.type,
       angle: 0,
       spin: tower.type === 'dwarf' ? 12 : 0,
@@ -1740,7 +1798,7 @@ class GameScene extends Phaser.Scene {
     if (e.hp <= 0) {
       e.alive = false;
       this.spawnSpark(e.container.x, e.container.y, e.typeDef.spark, 12);
-      this.state.gold += Math.round(e.reward * ((window.TD_MULT && window.TD_MULT.goldBonus) || 1));
+      this.state.gold += Math.round(e.reward * window.getActiveMult('goldBonus', 'global'));
       this.state.enemiesAlive--;
       e.container.destroy();
       this.events.emit('stateUpdate', this.state);
@@ -1802,6 +1860,13 @@ class UIScene extends Phaser.Scene {
       }
     });
 
+    // botão upgrades in-game
+    this.upgradeBtn = makeButton(this, W - 380, 78, 100, 36, "⬆ Upgrades", {
+      fill: 0x2a1a3a, stroke: 0xa080c8, hoverFill: 0x3a2a5a,
+      fontSize: 13, fontColor: '#e8d8ff', radius: 10,
+      onClick: () => this.toggleUpgradePanel()
+    });
+
     // botão loja
     this.shopBtn = makeButton(this, W - 270, 28, 90, 40, "🛒 Loja", {
       fill: 0x3a1a08, stroke: 0xbf8c6c, hoverFill: 0x5a3a2d,
@@ -1826,7 +1891,9 @@ class UIScene extends Phaser.Scene {
       gold:      { icon:'💰', name:'Bênção do Anão',    cost:50,  cooldown:90000, until:0, desc:'+100 ouro' },
     };
     this.shopOpen = false;
+    this.upgradePanelOpen = false;
     this.buildShop();
+    this.buildUpgradePanel();
     this.buildTowerPanel();
 
     this.towerSelHandler = (sel) => this.refreshTowerPanel(sel);
@@ -1843,6 +1910,15 @@ class UIScene extends Phaser.Scene {
     this.closeMenu();
     this.tweens.killAll();
     this.time.removeAllEvents();
+    // limpa painel de upgrades, badges e floating texts.
+    if (this.upgradePanel && this.upgradePanel.scene) this.upgradePanel.destroy();
+    this.upgradePanel = null;
+    this.upgradePanelContent = null;
+    this.upgradePanelOpen = false;
+    for (const t of (this._floatTexts || [])) if (t && t.scene) t.destroy();
+    for (const b of (this._badgeTexts || [])) if (b && b.scene) b.destroy();
+    this._floatTexts = [];
+    this._badgeTexts = [];
     this.gameScene = null;
     this.refreshHandler = null;
     this.towerSelHandler = null;
@@ -1924,7 +2000,194 @@ class UIScene extends Phaser.Scene {
     this.waveText.setText(`Onda: ${s.wave} / ${s.totalWaves}${phaseStr}`);
     this.startBtn.setAlpha(s.waveActive ? 0.4 : 1);
     this.refreshTowerPanel();
+    this.refreshUpgradePanel();
   }
+
+  // =========== UPGRADES IN-GAME ===========
+  buildUpgradePanel() {
+    const w = 260, h = H - 80;
+    this.upgradePanel = this.add.container(W, 70).setVisible(false).setDepth(50);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x14181a, 0.96).fillRoundedRect(0, 0, w, h, 14);
+    bg.lineStyle(2, 0xa080c8, 0.8).strokeRoundedRect(0, 0, w, h, 14);
+    const title = this.add.text(w/2, 10, "⬆ Upgrades Ativos", {
+      fontSize:'18px', color:'#e8d8ff', fontFamily: FONT_TITLE, fontStyle:'bold'
+    }).setOrigin(0.5,0);
+    title.setShadow(2,2,'#000',4);
+    this.upgradePanel.add([bg, title]);
+    this.upgradePanelW = w;
+    this.upgradePanelH = h;
+    this.upgradePanelContent = this.add.container(0, 40);
+    this.upgradePanel.add(this.upgradePanelContent);
+    this.refreshUpgradePanel();
+  }
+
+  toggleUpgradePanel() {
+    if (!this.upgradePanel) return;
+    this.upgradePanelOpen = !this.upgradePanelOpen;
+    this.upgradePanel.setVisible(true);
+    this.tweens.add({
+      targets: this.upgradePanel,
+      x: this.upgradePanelOpen ? W - this.upgradePanelW - 10 : W,
+      duration: 200,
+      onComplete: () => { if (!this.upgradePanelOpen) this.upgradePanel.setVisible(false); }
+    });
+    if (this.upgradePanelOpen) this.refreshUpgradePanel();
+  }
+
+  refreshUpgradePanel() {
+    if (!this.upgradePanelContent) return;
+    this.upgradePanelContent.removeAll(true);
+
+    const owned = window.TD_TOWER_UPGRADES || {};
+    const active = window.TD_ACTIVE_UPGRADES || {};
+    const gold = (this.gameScene && this.gameScene.state) ? this.gameScene.state.gold : 0;
+
+    const sections = [
+      { key: 'archer', label: '🏹 Arqueiro', color: '#9cffb0' },
+      { key: 'dwarf',  label: '⛏ Anão',     color: '#e8c87a' },
+      { key: 'mage',   label: '🔮 Mago',    color: '#e8a8ff' },
+      { key: 'global', label: '🌍 Global',  color: '#ffd966' },
+    ];
+
+    let y = 0;
+    const w = this.upgradePanelW;
+
+    sections.forEach(section => {
+      const ids = Object.keys(UPGRADE_DEFS).filter(id =>
+        UPGRADE_DEFS[id].tower === section.key && (owned[id] | 0) > 0
+      );
+      if (ids.length === 0) return;
+
+      const header = this.add.text(12, y, section.label, {
+        fontSize: '13px', color: section.color, fontFamily: FONT_BTN, fontStyle: 'bold'
+      });
+      header.setShadow(1,1,'#000',2);
+      this.upgradePanelContent.add(header);
+      y += 20;
+
+      ids.forEach(id => {
+        const def = UPGRADE_DEFS[id];
+        const lvl = owned[id] | 0;
+        const cost = UPGRADE_ACTIVATION_COST[id] || 0;
+        const isActive = !!active[id];
+        const isPreOnly = id === 'starting_gold';
+
+        const rowG = this.add.graphics();
+        const rowW = w - 16, rowH = 48;
+        let fill = 0x2a2418, stroke = 0x6a5a36;
+        if (isActive) { fill = 0x1d4a1a; stroke = 0x6cbf4c; }
+        else if (isPreOnly) { fill = 0x222226; stroke = 0x444448; }
+        rowG.fillStyle(fill, 0.95).fillRoundedRect(8, y, rowW, rowH, 8);
+        rowG.lineStyle(1.5, stroke, 0.9).strokeRoundedRect(8, y, rowW, rowH, 8);
+
+        const ico = this.add.text(18, y + 6, def.icon, { fontSize: '22px' });
+        const name = this.add.text(50, y + 4, def.name, {
+          fontSize: '12px', color: '#f0e0c0', fontFamily: FONT_BTN, fontStyle: 'bold'
+        });
+        const sub = this.add.text(50, y + 20, `Nível ${lvl}  ·  🪙 ${cost}`, {
+          fontSize: '11px', color: '#cfc09a', fontFamily: FONT_BTN
+        });
+        [name, sub].forEach(t => t.setShadow(1,1,'#000',2));
+        this.upgradePanelContent.add([rowG, ico, name, sub]);
+
+        if (isPreOnly) {
+          const tag = this.add.text(w - 18, y + rowH/2, 'Pré-partida', {
+            fontSize: '11px', color: '#a8a8b0', fontFamily: FONT_BTN, fontStyle: 'italic'
+          }).setOrigin(1, 0.5);
+          this.upgradePanelContent.add(tag);
+        } else if (isActive) {
+          const tag = this.add.text(w - 18, y + rowH/2, '✔ Ativo', {
+            fontSize: '12px', color: '#9cffb0', fontFamily: FONT_BTN, fontStyle: 'bold'
+          }).setOrigin(1, 0.5);
+          tag.setShadow(1,1,'#000',2);
+          this.upgradePanelContent.add(tag);
+        } else {
+          const canAfford = gold >= cost;
+          const btnG = this.add.graphics();
+          const bw = 62, bh = 28, bx = w - bw - 14, by = y + (rowH - bh) / 2;
+          const btnFill = canAfford ? 0x8a6a14 : 0x3a3428;
+          const btnStroke = canAfford ? 0xffd966 : 0x5a5440;
+          btnG.fillStyle(btnFill, 1).fillRoundedRect(bx, by, bw, bh, 8);
+          btnG.lineStyle(1.5, btnStroke, 1).strokeRoundedRect(bx, by, bw, bh, 8);
+          const btnTxt = this.add.text(bx + bw/2, by + bh/2, 'Ativar', {
+            fontSize: '12px', color: canAfford ? '#fff8d8' : '#888070', fontFamily: FONT_BTN, fontStyle: 'bold'
+          }).setOrigin(0.5);
+          this.upgradePanelContent.add([btnG, btnTxt]);
+          if (canAfford) {
+            const hit = this.add.zone(bx, by, bw, bh).setOrigin(0).setInteractive({ useHandCursor: true });
+            hit.on('pointerdown', () => this.activateUpgrade(id));
+            this.upgradePanelContent.add(hit);
+          }
+        }
+        y += rowH + 6;
+      });
+      y += 6;
+    });
+
+    if (y === 0) {
+      const empty = this.add.text(this.upgradePanelW/2, 30,
+        'Compre upgrades na Loja\npara ativá-los em jogo.',
+        { fontSize:'12px', color:'#a8a08c', fontFamily: FONT_BTN, fontStyle:'italic', align:'center' }
+      ).setOrigin(0.5, 0);
+      this.upgradePanelContent.add(empty);
+    }
+  }
+
+  activateUpgrade(id) {
+    const def = UPGRADE_DEFS[id];
+    if (!def || !this.gameScene) return;
+    if (id === 'starting_gold') return;
+    const cost = UPGRADE_ACTIVATION_COST[id] || 0;
+    const g = this.gameScene;
+    if (g.state.gold < cost) return;
+    if (window.TD_ACTIVE_UPGRADES[id]) return;
+    g.state.gold -= cost;
+    window.TD_ACTIVE_UPGRADES[id] = true;
+    g.events.emit('stateUpdate', g.state);
+    this.showFloatingText(`+${def.name} ATIVO!`);
+    this.showUpgradeBadgeOnTowers(def.tower);
+    this.refreshUpgradePanel();
+  }
+
+  showFloatingText(text) {
+    const t = this.add.text(W/2, H/2, text, {
+      fontSize: '28px', color: '#ffd966', fontFamily: FONT_TITLE, fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(80);
+    t.setShadow(0, 0, '#ffae00', 18, true, true);
+    if (!this._floatTexts) this._floatTexts = [];
+    this._floatTexts.push(t);
+    this.tweens.add({
+      targets: t, y: H/2 - 80, alpha: 0, duration: 1500, ease: 'Cubic.Out',
+      onComplete: () => {
+        if (t && t.scene) t.destroy();
+        if (this._floatTexts) this._floatTexts = this._floatTexts.filter(x => x !== t);
+      }
+    });
+  }
+
+  showUpgradeBadgeOnTowers(towerKey) {
+    if (!this.gameScene) return;
+    const iconMap = { archer: '🏹', dwarf: '🔨', mage: '🔮', global: '💰' };
+    const icon = iconMap[towerKey] || '✨';
+    const towers = this.gameScene.towers || [];
+    const targets = towerKey === 'global' ? towers : towers.filter(t => t.type === towerKey);
+    if (!this._badgeTexts) this._badgeTexts = [];
+    targets.forEach(t => {
+      const badge = this.gameScene.add.text(t.x, t.y - 36, icon, { fontSize: '20px' })
+        .setOrigin(0.5).setDepth(70);
+      this._badgeTexts.push(badge);
+      const tw = this.gameScene.tweens.add({
+        targets: badge, alpha: { from: 1, to: 0.3 }, yoyo: true, repeat: 5, duration: 180,
+        onComplete: () => {
+          if (badge && badge.scene) badge.destroy();
+          if (this._badgeTexts) this._badgeTexts = this._badgeTexts.filter(x => x !== badge);
+        }
+      });
+    });
+  }
+
+
 
   buildTowerPanel() {
     const panelW = 72;
