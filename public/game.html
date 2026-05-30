@@ -183,7 +183,7 @@ window.getActiveMult = function (stat, towerType) {
 };
 
 window.TD_POST = function (payload) {
-  try { window.parent && window.parent.postMessage(payload, window.TD_PARENT_ORIGIN || '*'); } catch (_) {}
+  try { window.parent && window.parent.postMessage(payload, window.TD_PARENT_ORIGIN || window.location.origin); } catch (_) {}
 };
 window.addEventListener('message', (ev) => {
   if (ev.source !== window.parent) return;
