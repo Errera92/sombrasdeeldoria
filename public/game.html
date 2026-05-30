@@ -433,43 +433,66 @@ function generatePhaseLayout(stageId, phaseIndex) {
   // garante saída pela direita
   path.push({ x: W + 30, y: cy });
 
-  // Slots adjacentes ao path, evitando sobreposição.
+  // Slots adjacentes ao path, evitando sobreposição com o caminho e entre si.
+  // Path é desenhado com largura ~56px (half-width ~28). Slot tem raio visual ~24 + hit 50x50.
+  // → distância mínima ao path: 28 (half) + 24 (slot) + 18 (folga) = 70
+  // → distância mínima entre slots: 24 + 24 + 14 (folga) = 62
   const slots = [];
-  const used = new Set();
-  const tooCloseToPath = (sx, sy, minDist) => {
+  const PATH_CLEAR = 70;
+  const SLOT_GAP = 62;
+  const tooCloseToPath = (sx, sy) => {
     for (let i = 0; i < path.length - 1; i++) {
       const a = path[i], b = path[i + 1];
-      // distância ponto-segmento
       const dx = b.x - a.x, dy = b.y - a.y;
       const len2 = dx * dx + dy * dy || 1;
       let t = ((sx - a.x) * dx + (sy - a.y) * dy) / len2;
       t = Math.max(0, Math.min(1, t));
       const px = a.x + t * dx, py = a.y + t * dy;
-      if (Math.hypot(sx - px, sy - py) < minDist) return true;
+      if (Math.hypot(sx - px, sy - py) < PATH_CLEAR) return true;
+    }
+    return false;
+  };
+  const tooCloseToSlot = (sx, sy) => {
+    for (const s of slots) {
+      if (Math.hypot(sx - s.x, sy - s.y) < SLOT_GAP) return true;
     }
     return false;
   };
   const tryAdd = (sx, sy) => {
+    sx = Math.round(sx); sy = Math.round(sy);
     if (sx < 50 || sx > W - 50 || sy < 50 || sy > H - 50) return false;
-    const key = Math.round(sx / 40) + ',' + Math.round(sy / 40);
-    if (used.has(key)) return false;
-    if (tooCloseToPath(sx, sy, 60)) return false;
-    used.add(key);
-    slots.push({ x: Math.round(sx), y: Math.round(sy) });
+    if (tooCloseToPath(sx, sy)) return false;
+    if (tooCloseToSlot(sx, sy)) return false;
+    slots.push({ x: sx, y: sy });
     return true;
   };
 
   // 1) tenta posicionar próximo a cada vértice interno do path
   for (let i = 1; i < path.length - 1 && slots.length < 14; i++) {
     const p = path[i];
-    for (const [dx, dy] of [[0,-95],[0,95],[-95,0],[95,0],[-80,-80],[80,-80],[-80,80],[80,80]]) {
+    for (const [dx, dy] of [[0,-90],[0,90],[-90,0],[90,0],[-80,-80],[80,-80],[-80,80],[80,80]]) {
       if (slots.length >= 14) break;
       tryAdd(p.x + dx, p.y + dy);
     }
   }
-  // 2) preenche com grid caso ainda falte
-  for (let y = 90; y < H - 70 && slots.length < 12; y += 110) {
-    for (let x = 110; x < W - 90 && slots.length < 12; x += 150) {
+  // 2) ao longo de cada segmento do path, propondo pontos paralelos dos dois lados
+  for (let i = 0; i < path.length - 1 && slots.length < 14; i++) {
+    const a = path[i], b = path[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len; // normal
+    const steps = Math.max(1, Math.floor(len / 90));
+    for (let k = 1; k <= steps && slots.length < 14; k++) {
+      const t = k / (steps + 1);
+      const mx = a.x + dx * t, my = a.y + dy * t;
+      tryAdd(mx + nx * 75, my + ny * 75);
+      if (slots.length >= 14) break;
+      tryAdd(mx - nx * 75, my - ny * 75);
+    }
+  }
+  // 3) preenche com grid caso ainda falte
+  for (let y = 90; y < H - 70 && slots.length < 12; y += 80) {
+    for (let x = 110; x < W - 90 && slots.length < 12; x += 90) {
       tryAdd(x, y);
     }
   }
