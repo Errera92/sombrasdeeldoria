@@ -1860,6 +1860,13 @@ class UIScene extends Phaser.Scene {
       }
     });
 
+    // botão upgrades in-game
+    this.upgradeBtn = makeButton(this, W - 380, 78, 100, 36, "⬆ Upgrades", {
+      fill: 0x2a1a3a, stroke: 0xa080c8, hoverFill: 0x3a2a5a,
+      fontSize: 13, fontColor: '#e8d8ff', radius: 10,
+      onClick: () => this.toggleUpgradePanel()
+    });
+
     // botão loja
     this.shopBtn = makeButton(this, W - 270, 28, 90, 40, "🛒 Loja", {
       fill: 0x3a1a08, stroke: 0xbf8c6c, hoverFill: 0x5a3a2d,
@@ -1884,7 +1891,9 @@ class UIScene extends Phaser.Scene {
       gold:      { icon:'💰', name:'Bênção do Anão',    cost:50,  cooldown:90000, until:0, desc:'+100 ouro' },
     };
     this.shopOpen = false;
+    this.upgradePanelOpen = false;
     this.buildShop();
+    this.buildUpgradePanel();
     this.buildTowerPanel();
 
     this.towerSelHandler = (sel) => this.refreshTowerPanel(sel);
