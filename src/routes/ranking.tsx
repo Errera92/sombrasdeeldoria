@@ -5,7 +5,16 @@ import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/ranking")({
   component: RankingPage,
-  head: () => ({ meta: [{ title: "Ranking — Sombras de Eldoria" }] }),
+  head: () => ({
+    meta: [
+      { title: "Ranking Global — Sombras de Eldoria Tower Defense" },
+      { name: "description", content: "Veja os 20 melhores defensores do reino no ranking global de Sombras de Eldoria e dispute as primeiras posições." },
+      { property: "og:title", content: "Ranking Global — Top 20 Heróis de Sombras de Eldoria" },
+      { property: "og:description", content: "Veja os 20 melhores defensores do reino e dispute as primeiras posições." },
+      { property: "og:url", content: "https://sombrasdeeldoria.lovable.app/ranking" },
+    ],
+    links: [{ rel: "canonical", href: "https://sombrasdeeldoria.lovable.app/ranking" }],
+  }),
 });
 
 interface Row { id: string; nickname: string; high_score: number; }

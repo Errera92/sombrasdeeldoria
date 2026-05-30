@@ -5,9 +5,13 @@ export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     meta: [
-      { title: "Sombras de Eldoria — Tower Defense" },
-      { name: "description", content: "Defenda a base contra as hordas das trevas em um Tower Defense de fantasia épica medieval sombria." },
+      { title: "Sombras de Eldoria — Tower Defense de Fantasia Medieval" },
+      { name: "description", content: "Defenda o reino contra hordas das trevas neste tower defense de fantasia medieval sombria. Estágios desafiadores, torres únicas e upgrades épicos." },
+      { property: "og:title", content: "Sombras de Eldoria — Tower Defense de Fantasia Medieval" },
+      { property: "og:description", content: "Defenda o reino contra hordas das trevas neste tower defense de fantasia medieval sombria." },
+      { property: "og:url", content: "https://sombrasdeeldoria.lovable.app/" },
     ],
+    links: [{ rel: "canonical", href: "https://sombrasdeeldoria.lovable.app/" }],
   }),
 });
 

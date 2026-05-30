@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /play
+Disallow: /menu
+Disallow: /shop
+Disallow: /missions
+Disallow: /ranking
+
+Sitemap: https://sombrasdeeldoria.lovable.app/sitemap.xml

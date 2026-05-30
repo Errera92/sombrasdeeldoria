@@ -7,7 +7,16 @@ import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/menu")({
   component: MenuPage,
-  head: () => ({ meta: [{ title: "Menu — Sombras de Eldoria" }] }),
+  head: () => ({
+    meta: [
+      { title: "Menu Principal — Sombras de Eldoria Tower Defense" },
+      { name: "description", content: "Acesse a campanha, missões, loja de upgrades e ranking global de Sombras de Eldoria. Continue sua jornada para defender o reino." },
+      { property: "og:title", content: "Menu Principal — Sombras de Eldoria" },
+      { property: "og:description", content: "Acesse campanha, missões, loja de upgrades e ranking global." },
+      { property: "og:url", content: "https://sombrasdeeldoria.lovable.app/menu" },
+    ],
+    links: [{ rel: "canonical", href: "https://sombrasdeeldoria.lovable.app/menu" }],
+  }),
 });
 
 function MenuPage() {
@@ -46,7 +55,7 @@ function MenuPage() {
         </header>
 
         <h1 className="mt-12 text-center font-serif text-5xl font-bold tracking-wider text-amber-300 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
-          Sombras de Eldoria
+          Sombras de Eldoria — Tower Defense
         </h1>
         <p className="mt-2 text-center italic text-amber-100/60">As trevas avançam. Defenda o reino.</p>
 

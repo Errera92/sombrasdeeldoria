@@ -8,7 +8,16 @@ import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/play")({
   component: PlayPage,
-  head: () => ({ meta: [{ title: "Jogar — Sombras de Eldoria" }] }),
+  head: () => ({
+    meta: [
+      { title: "Jogar — Sombras de Eldoria Tower Defense" },
+      { name: "description", content: "Inicie a campanha de Sombras de Eldoria. Posicione torres, ative upgrades e enfrente hordas crescentes em estágios procedurais." },
+      { property: "og:title", content: "Jogar Sombras de Eldoria — Campanha Tower Defense" },
+      { property: "og:description", content: "Posicione torres, ative upgrades e enfrente hordas crescentes em estágios procedurais." },
+      { property: "og:url", content: "https://sombrasdeeldoria.lovable.app/play" },
+    ],
+    links: [{ rel: "canonical", href: "https://sombrasdeeldoria.lovable.app/play" }],
+  }),
 });
 
 function PlayPage() {
@@ -88,6 +97,7 @@ function PlayPage() {
   return (
     <div className="h-screen w-screen bg-black flex flex-col">
       <Toaster />
+      <h1 className="sr-only">Jogar Sombras de Eldoria — Campanha Tower Defense</h1>
       <div className="flex items-center justify-between bg-zinc-950 px-4 py-2 text-xs text-amber-200 border-b border-amber-900/30">
         <Link to="/menu" className="hover:text-amber-100">← Menu</Link>
         <span className="font-serif">{profile?.nickname}</span>
