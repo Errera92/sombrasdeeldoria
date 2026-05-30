@@ -26,7 +26,7 @@ function LoginPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        if (!nickname.trim() || nickname.length < 3) { toast.error("Nickname precisa ter pelo menos 3 caracteres"); return; }
+        if (!nickname.trim() || nickname.trim().length < 3 || nickname.trim().length > 20) { toast.error("Nickname precisa ter entre 3 e 20 caracteres"); return; }
         // Check nickname availability
         const { data: exists } = await supabase.from("profiles").select("id").eq("nickname", nickname).maybeSingle();
         if (exists) { toast.error("Esse nickname já está em uso"); return; }
