@@ -216,12 +216,13 @@ export type Database = {
         }[]
       }
       process_upgrade_purchase: {
-        Args: { p_cost: number; p_max_level: number; p_upgrade_id: string }
+        Args: { p_upgrade_id: string }
         Returns: {
           gems: number
           level: number
         }[]
       }
+      update_nickname: { Args: { p_nickname: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

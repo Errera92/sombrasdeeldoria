@@ -42,8 +42,6 @@ export const purchaseUpgrade = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { data: row, error } = await supabase.rpc("process_upgrade_purchase", {
       p_upgrade_id: def.id,
-      p_cost: def.costPerLevel,
-      p_max_level: def.maxLevel,
     });
     if (error) throw new Error(error.message);
     const r = Array.isArray(row) ? row[0] : row;

@@ -131,7 +131,7 @@ window.TD_MULT = { damage: 1, range: 1, fireRate: 1, goldBonus: 1, startingGoldB
 window.TD_TOWER_UPGRADES = window.TD_TOWER_UPGRADES || {}; // níveis comprados na loja
 window.TD_ACTIVE_UPGRADES = {}; // ativados na partida atual
 window.TD_PLAYER = { nickname: '', gems: 0 };
-window.TD_PARENT_ORIGIN = '*';
+window.TD_PARENT_ORIGIN = window.location.origin;
 
 // Custo em ouro para ativar cada upgrade durante a partida.
 const UPGRADE_ACTIVATION_COST = {
@@ -183,7 +183,7 @@ window.getActiveMult = function (stat, towerType) {
 };
 
 window.TD_POST = function (payload) {
-  try { window.parent && window.parent.postMessage(payload, window.TD_PARENT_ORIGIN || '*'); } catch (_) {}
+  try { window.parent && window.parent.postMessage(payload, window.TD_PARENT_ORIGIN || window.location.origin); } catch (_) {}
 };
 window.addEventListener('message', (ev) => {
   if (ev.source !== window.parent) return;
