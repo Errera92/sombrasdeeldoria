@@ -206,6 +206,7 @@ window.addEventListener('message', (ev) => {
     } else if (d.type === 'td:bootstrap') {
       window.TD_TOWER_UPGRADES = window.TD_TOWER_UPGRADES || {};
     }
+    if (d.type === 'td:bootstrap') window.TD_ACTIVE_UPGRADES = {};
     if (typeof d.nickname === 'string') window.TD_PLAYER.nickname = d.nickname;
     if (typeof d.gems === 'number') window.TD_PLAYER.gems = d.gems;
     try {
