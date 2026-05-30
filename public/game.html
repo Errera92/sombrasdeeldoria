@@ -1233,6 +1233,8 @@ class GameScene extends Phaser.Scene {
     const def = TOWER_TYPES[typeKey];
     if (!def || slot.tower || this.state.gold < def.cost) return;
     this.state.gold -= def.cost;
+    this.state.goldSpent += def.cost;
+    this.state.towersUsed++;
 
     slot.container.disableInteractive();
     slot.ring.setVisible(false); slot.cross.setVisible(false);
@@ -1541,6 +1543,7 @@ class GameScene extends Phaser.Scene {
     if (item.until > now) return; // cooldown
     if (this.state.gold < item.cost) return;
     this.state.gold -= item.cost;
+    this.state.goldSpent += item.cost;
     item.until = now + item.cooldown;
 
     if (key === 'fire') {
@@ -1811,6 +1814,7 @@ class GameScene extends Phaser.Scene {
       this.time.delayedCall(60, () => { if (e.alive && e.body.setFillStyle) e.body.setFillStyle(orig); });
     }
     if (e.hp <= 0) {
+      this.state.enemiesKilled++;
       e.alive = false;
       this.spawnSpark(e.container.x, e.container.y, e.typeDef.spark, 12);
       this.state.gold += Math.round(e.reward * window.getActiveMult('goldBonus', 'global'));
@@ -1825,6 +1829,7 @@ class GameScene extends Phaser.Scene {
     e.alive = false;
     this.state.enemiesAlive--;
     this.state.hp -= 1;
+    this.state.tookDamage = true;
     e.container.destroy();
     this.cameras.main.flash(120, 80, 0, 0);
     this.events.emit('stateUpdate', this.state);
@@ -2158,6 +2163,8 @@ class UIScene extends Phaser.Scene {
     if (g.state.gold < cost) return;
     if (window.TD_ACTIVE_UPGRADES[id]) return;
     g.state.gold -= cost;
+    g.state.goldSpent += cost;
+    g.state.usedUpgrade = true;
     window.TD_ACTIVE_UPGRADES[id] = true;
     g.events.emit('stateUpdate', g.state);
     this.showFloatingText(`+${def.name} ATIVO!`);
