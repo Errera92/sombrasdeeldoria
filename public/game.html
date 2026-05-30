@@ -1768,21 +1768,18 @@ class GameScene extends Phaser.Scene {
         if (hasNextPhase) {
           // reporta progresso parcial e avança fase em sequência (sem recriar a cena)
           try {
-            window.TD_POST && window.TD_POST({
-              type: 'td:stageComplete',
-              wave: this.state.wave | 0,
-              gold: this.state.gold | 0,
-              victory: true,
-              stage: this.stage.name,
-              phase: this.phase && this.phase.name,
-              partial: true,
-            });
+            const payload = this.buildPhasePayload(true);
+            payload.partial = true;
+            window.TD_POST && window.TD_POST(payload);
           } catch (_) {}
+          // acumula histórico de "fase sem dano" antes de avançar
+          this.state.phaseNoDamageHistory.push(!this.state.tookDamage);
           this.events.emit('stateUpdate', this.state);
           this.time.delayedCall(800, () => this.loadPhase(this.phaseId + 1));
         } else {
           // última fase: vitória total
           this.state.victory = true;
+          this.state.phaseNoDamageHistory.push(!this.state.tookDamage);
           this.events.emit('stateUpdate', this.state);
           this.exitToGameOver({ victory: true, wave: this.state.wave, stage: this.stage.name });
         }
