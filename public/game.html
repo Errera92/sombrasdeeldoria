@@ -1793,7 +1793,7 @@ class GameScene extends Phaser.Scene {
     if (e.hp <= 0) {
       e.alive = false;
       this.spawnSpark(e.container.x, e.container.y, e.typeDef.spark, 12);
-      this.state.gold += Math.round(e.reward * ((window.TD_MULT && window.TD_MULT.goldBonus) || 1));
+      this.state.gold += Math.round(e.reward * window.getActiveMult('goldBonus', 'global'));
       this.state.enemiesAlive--;
       e.container.destroy();
       this.events.emit('stateUpdate', this.state);
