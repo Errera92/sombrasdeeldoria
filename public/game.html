@@ -962,6 +962,8 @@ class GameScene extends Phaser.Scene {
     this.towers = [];
     this.slots = [];
     this.spawnTimer = null;
+    // reset upgrades ativados ao encerrar a partida.
+    window.TD_ACTIVE_UPGRADES = {};
   }
 
   clearGroup(group) {
