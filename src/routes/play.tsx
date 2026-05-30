@@ -27,6 +27,7 @@ function PlayPage() {
         nickname: profile.nickname,
         gems: profile.gems,
         multipliers,
+        towerUpgrades: levels,
       }, window.location.origin);
       sentBootstrapRef.current = true;
     };
