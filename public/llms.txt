@@ -1,0 +1,10 @@
+# Sombras de Eldoria
+
+> Tower defense de fantasia medieval sombria jogado no navegador. Posicione torres (arqueiro élfico, anão de pedra, mago das runas), ative upgrades pagos com ouro durante a partida e enfrente hordas crescentes em estágios procedurais.
+
+Sombras de Eldoria é um jogo gratuito de defesa de torre com progressão entre partidas: complete missões para ganhar gems, gaste gems na loja para desbloquear upgrades permanentes, dispute o ranking global. Cada estágio tem 5 fases com caminhos geometricamente únicos.
+
+## Pages
+
+- [Início](/): Página inicial com descrição do jogo e acesso à conta.
+- [Entrar](/login): Crie sua conta ou faça login para começar a jogar.
