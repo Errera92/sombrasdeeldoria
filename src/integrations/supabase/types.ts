@@ -14,6 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      missions: {
+        Row: {
+          category: string
+          condition_type: string
+          condition_value: number
+          created_at: string
+          description: string
+          gems_reward: number
+          icon: string
+          id: string
+          repeatable: boolean
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          category: string
+          condition_type: string
+          condition_value?: number
+          created_at?: string
+          description: string
+          gems_reward?: number
+          icon?: string
+          id: string
+          repeatable?: boolean
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          category?: string
+          condition_type?: string
+          condition_value?: number
+          created_at?: string
+          description?: string
+          gems_reward?: number
+          icon?: string
+          id?: string
+          repeatable?: boolean
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      player_missions: {
+        Row: {
+          completed_at: string | null
+          mission_id: string
+          player_id: string
+          progress: number
+          times_completed: number
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          mission_id: string
+          player_id: string
+          progress?: number
+          times_completed?: number
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          mission_id?: string
+          player_id?: string
+          progress?: number
+          times_completed?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_missions_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_upgrades: {
         Row: {
           created_at: string
@@ -81,6 +158,22 @@ export type Database = {
           rank: number
         }[]
       }
+      get_player_missions: {
+        Args: never
+        Returns: {
+          category: string
+          completed_at: string
+          condition_value: number
+          description: string
+          gems_reward: number
+          icon: string
+          id: string
+          progress: number
+          repeatable: boolean
+          times_completed: number
+          title: string
+        }[]
+      }
       get_top_rankings: {
         Args: { limit_count?: number }
         Returns: {
@@ -95,6 +188,30 @@ export type Database = {
           earned: number
           gems: number
           high_score: number
+          score: number
+        }[]
+      }
+      process_phase_result: {
+        Args: {
+          p_all_phases_no_damage: boolean
+          p_enemies_killed: number
+          p_gold: number
+          p_gold_spent: number
+          p_phase_index: number
+          p_phase_seconds: number
+          p_stage_complete: boolean
+          p_stage_id: number
+          p_took_damage: boolean
+          p_towers_used: number
+          p_used_upgrade: boolean
+          p_victory: boolean
+          p_wave: number
+        }
+        Returns: {
+          earned: number
+          gems: number
+          high_score: number
+          missions_earned: Json
           score: number
         }[]
       }
