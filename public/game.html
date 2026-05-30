@@ -935,6 +935,13 @@ class GameScene extends Phaser.Scene {
     this.state.phase = phaseIndex + 1;
     this.state.totalPhases = this.stage.phases.length;
     this.state.stageName = this.stage.name;
+    // reset per-phase mission metrics (history is preserved across phases)
+    this.state.tookDamage = false;
+    this.state.towersUsed = 0;
+    this.state.phaseStartTime = Date.now();
+    this.state.enemiesKilled = 0;
+    this.state.goldSpent = 0;
+    this.state.usedUpgrade = false;
 
     const ui = this.scene.get('UIScene');
     if (ui && ui.updateStageTitle) ui.updateStageTitle();
