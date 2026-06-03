@@ -143,6 +143,7 @@ const UPGRADE_ACTIVATION_COST = {
   dwarf_firerate:  55,
   mage_damage:     60,
   mage_range:      55,
+  mage_firerate:   60,
   mage_splash:     70,
   gold_bonus:      50,
   starting_gold:   0,
@@ -158,10 +159,12 @@ const UPGRADE_DEFS = {
   dwarf_firerate:  { stat: 'fireRate',  tower: 'dwarf',  effect: 0.10, icon: '🔥', name: 'Forja Acelerada' },
   mage_damage:     { stat: 'damage',    tower: 'mage',   effect: 0.15, icon: '💎', name: 'Cristal Arcano' },
   mage_range:      { stat: 'range',     tower: 'mage',   effect: 0.12, icon: '🔮', name: 'Orbe Expandido' },
+  mage_firerate:   { stat: 'fireRate',  tower: 'mage',   effect: 0.10, icon: '✨', name: 'Encantamento Veloz' },
   mage_splash:     { stat: 'splash',    tower: 'mage',   effect: 0.15, icon: '💥', name: 'Onda de Choque' },
   gold_bonus:      { stat: 'goldBonus', tower: 'global', effect: 0.15, icon: '💰', name: 'Ouro Extra' },
   starting_gold:   { stat: 'startingGold', tower: 'global', effect: 50, icon: '🪙', name: 'Ouro Inicial' },
 };
+
 
 // Multiplicador a partir dos upgrades ATIVOS (excluindo TD_MULT — que vem da loja
 // e agora só usamos para startingGoldBonus). Para cada upgrade ativo cujo stat e
