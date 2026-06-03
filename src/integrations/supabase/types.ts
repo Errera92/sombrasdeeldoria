@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      challenges: {
+        Row: {
+          challenger_id: string
+          challenger_score: number | null
+          challenger_victory: boolean | null
+          challenger_wave: number | null
+          created_at: string
+          expires_at: string
+          id: string
+          opponent_id: string
+          opponent_score: number | null
+          opponent_victory: boolean | null
+          opponent_wave: number | null
+          stage_id: number
+          status: string
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          challenger_id: string
+          challenger_score?: number | null
+          challenger_victory?: boolean | null
+          challenger_wave?: number | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          opponent_id: string
+          opponent_score?: number | null
+          opponent_victory?: boolean | null
+          opponent_wave?: number | null
+          stage_id: number
+          status?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          challenger_id?: string
+          challenger_score?: number | null
+          challenger_victory?: boolean | null
+          challenger_wave?: number | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          opponent_id?: string
+          opponent_score?: number | null
+          opponent_victory?: boolean | null
+          opponent_wave?: number | null
+          stage_id?: number
+          status?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
       missions: {
         Row: {
           category: string
@@ -150,6 +204,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_challenge: { Args: { p_challenge_id: string }; Returns: undefined }
+      decline_challenge: {
+        Args: { p_challenge_id: string }
+        Returns: undefined
+      }
+      get_challenge_live: {
+        Args: { p_challenge_id: string }
+        Returns: {
+          challenger_nickname: string
+          challenger_score: number
+          challenger_wave: number
+          opponent_nickname: string
+          opponent_score: number
+          opponent_wave: number
+          stage_id: number
+          status: string
+        }[]
+      }
       get_my_rank: {
         Args: never
         Returns: {
@@ -220,6 +292,20 @@ export type Database = {
         Returns: {
           gems: number
           level: number
+        }[]
+      }
+      submit_challenge_result: {
+        Args: {
+          p_challenge_id: string
+          p_gold: number
+          p_victory: boolean
+          p_wave: number
+        }
+        Returns: {
+          challenger_score: number
+          opponent_score: number
+          status: string
+          winner_id: string
         }[]
       }
       update_nickname: { Args: { p_nickname: string }; Returns: string }

@@ -3,7 +3,9 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpgrades } from "@/hooks/useUpgrades";
+import { useChallenges } from "@/hooks/useChallenges";
 import { Toaster } from "@/components/ui/sonner";
+
 
 export const Route = createFileRoute("/menu")({
   component: MenuPage,
@@ -23,6 +25,8 @@ function MenuPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { profile } = useUpgrades(user?.id);
+  const { pendingCount } = useChallenges(user?.id);
+
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [loading, user, navigate]);
 
@@ -61,17 +65,19 @@ function MenuPage() {
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
           <MenuButton to="/play" label="Jogar" icon="⚔️" desc="Iniciar campanha" primary />
+          <MenuButton to="/challenges" label="Desafios" icon="⚔️" desc="Duelos PvP assíncronos" badge={pendingCount} />
           <MenuButton to="/missions" label="Missões" icon="📋" desc="Objetivos e recompensas" />
           <MenuButton to="/shop" label="Loja de Upgrades" icon="🛒" desc="Gaste seus gems" />
           <MenuButton to="/ranking" label="Ranking Global" icon="🏆" desc="Top 20 heróis" />
           <MenuButton to="/menu" label={`Recorde: ${profile?.high_score ?? 0}`} icon="📜" desc="Sua maior pontuação" disabled />
         </div>
+
       </div>
     </div>
   );
 }
 
-function MenuButton({ to, label, icon, desc, primary, disabled }: { to: string; label: string; icon: string; desc: string; primary?: boolean; disabled?: boolean }) {
+function MenuButton({ to, label, icon, desc, primary, disabled, badge }: { to: string; label: string; icon: string; desc: string; primary?: boolean; disabled?: boolean; badge?: number }) {
   const cls = `group relative flex items-center gap-4 rounded-xl border p-5 transition ${
     primary
       ? "border-amber-500/60 bg-gradient-to-br from-amber-700/40 to-amber-900/20 hover:from-amber-600/50 hover:to-amber-800/30"
@@ -79,7 +85,12 @@ function MenuButton({ to, label, icon, desc, primary, disabled }: { to: string; 
   } ${disabled ? "pointer-events-none opacity-60" : ""}`;
   const inner = (
     <>
-      <span className="text-3xl">{icon}</span>
+      <span className="relative text-3xl">
+        {icon}
+        {badge && badge > 0 ? (
+          <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">{badge}</span>
+        ) : null}
+      </span>
       <span className="flex-1">
         <span className="block font-serif text-xl font-bold text-amber-200">{label}</span>
         <span className="block text-xs text-amber-200/60">{desc}</span>
@@ -89,6 +100,7 @@ function MenuButton({ to, label, icon, desc, primary, disabled }: { to: string; 
   if (disabled) return <div className={cls}>{inner}</div>;
   return <Link to={to} className={cls}>{inner}</Link>;
 }
+
 
 function Loading() {
   return <div className="h-screen w-screen flex items-center justify-center bg-black text-amber-200 font-serif">Carregando…</div>;
