@@ -376,6 +376,14 @@ const PHASE_MIXES = [
     { name: "Corte dos Caídos",     mix: ['demon','harpy','demon','imp','demon'] },
     { name: "Trono do Senhor",      mix: ['demon','demon','golem','demon','demon'] },
   ],
+  // Vila Velha
+  [
+    { name: "Vielas Antigas",       mix: ['orc','goblin','orc','troll','wraith'] },
+    { name: "Mercado em Chamas",    mix: ['goblin','orc','wraith','goblin','troll'] },
+    { name: "Muralha Quebrada",     mix: ['wraith','troll','goblin','wraith','demon'] },
+    { name: "Última Defesa",        mix: ['troll','wraith','goblin','troll','demon'] },
+    { name: "Queda da Vila",        mix: ['demon','wraith','troll','demon','demon'] },
+  ],
 ];
 
 // RNG determinístico (mulberry32) — mesma seed gera sempre o mesmo path.
@@ -548,16 +556,36 @@ function generatePhaseLayout(stageId, phaseIndex) {
 function buildStagePhases(stageId) {
   const mixes = PHASE_MIXES[stageId] || PHASE_MIXES[0];
   return mixes.map((m, i) => {
-    const layout = generatePhaseLayout(stageId, i);
+    // Estágio 5 (Vila Velha): fase 0 usa o caminho fixo desenhado no editor.
+    const useFixed = stageId === 5 && i === 0;
+    const layout = useFixed ? VILA_VELHA_PHASE0 : generatePhaseLayout(stageId, i);
     return {
       name: m.name,
       mix: m.mix,
-      shape: layout.shape,
+      shape: useFixed ? 'custom' : layout.shape,
       path: layout.path,
       slots: layout.slots,
     };
   });
 }
+
+// Caminho fixo da Vila Velha (fase 1 — desenhado no map editor).
+const VILA_VELHA_PHASE0 = {
+  path: [
+    {x:20,y:143},{x:107,y:138},{x:182,y:169},{x:230,y:266},{x:189,y:351},
+    {x:148,y:442},{x:205,y:511},{x:301,y:579},{x:366,y:566},{x:383,y:472},
+    {x:332,y:393},{x:363,y:315},{x:370,y:218},{x:332,y:159},{x:397,y:117},
+    {x:471,y:170},{x:495,y:288},{x:633,y:188},{x:656,y:367},{x:844,y:576},
+    {x:969,y:657},{x:1127,y:484},{x:1103,y:393},{x:991,y:321},{x:1051,y:229},
+    {x:1239,y:193},
+  ],
+  slots: [
+    {x:90,y:195},{x:241,y:121},{x:298,y:253},{x:226,y:428},{x:319,y:512},
+    {x:119,y:507},{x:423,y:216},{x:537,y:185},{x:583,y:292},{x:697,y:328},
+    {x:399,y:64},{x:796,y:429},{x:951,y:579},{x:774,y:613},{x:1018,y:418},
+    {x:1089,y:305},
+  ],
+};
 
 const STAGES = [
   {
@@ -584,6 +612,11 @@ const STAGES = [
     id: 4, name: "Abismo Infernal", theme: "Profundezas do inferno", icon: "🔥", baseDifficulty: 5,
     palette: { bg: 0x180408, moss: 0x3a0a10, mossL: 0x5a1018, path: 0x6a0808, pathEdge: 0x1a0204, fog: 0x100204, mtn: 0x2a0608 },
     speedMul: 1.25,
+  },
+  {
+    id: 5, name: "Vila Velha", theme: "Ruínas de uma vila maldita", icon: "🏚️", baseDifficulty: 3,
+    palette: { bg: 0x14181a, moss: 0x2a3a26, mossL: 0x3d5236, path: 0x3a2e22, pathEdge: 0x241c14, fog: 0x0a1a0a, mtn: 0x1a2a1a },
+    speedMul: 1.0,
   },
 ];
 // Injeta as 5 fases (com path/slots únicos) em cada estágio.
