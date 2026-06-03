@@ -25,6 +25,8 @@ function MenuPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { profile } = useUpgrades(user?.id);
+  const { pendingCount } = useChallenges(user?.id);
+
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [loading, user, navigate]);
 
