@@ -214,8 +214,29 @@ window.addEventListener('message', (ev) => {
       const ui = game && game.scene && game.scene.getScene && game.scene.getScene('UIScene');
       if (ui && ui.refreshPlayerHud) ui.refreshPlayerHud();
     } catch (_) {}
+    if (d.type === 'td:bootstrap' && typeof d.startStageId === 'number') {
+      const sid = d.startStageId | 0;
+      try {
+        const game = window.eldoriaGame;
+        if (game && game.scene) {
+          const go = () => {
+            try {
+              const sel = game.scene.getScene('StageSelectScene');
+              if (sel && sel.scene && sel.scene.isActive && sel.scene.isActive()) {
+                sel.scene.start('PhaseSelectScene', { stageId: sid });
+              } else {
+                game.scene.start('PhaseSelectScene', { stageId: sid });
+              }
+            } catch (_) {}
+          };
+          // Defer slightly so Boot/StageSelect have time to initialize
+          setTimeout(go, 50);
+        }
+      } catch (_) {}
+    }
   }
 });
+
 
 // =============== CONSTANTES ===============
 const W = 1280, H = 720;
