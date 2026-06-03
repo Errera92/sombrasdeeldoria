@@ -77,7 +77,7 @@ function MenuPage() {
   );
 }
 
-function MenuButton({ to, label, icon, desc, primary, disabled }: { to: string; label: string; icon: string; desc: string; primary?: boolean; disabled?: boolean }) {
+function MenuButton({ to, label, icon, desc, primary, disabled, badge }: { to: string; label: string; icon: string; desc: string; primary?: boolean; disabled?: boolean; badge?: number }) {
   const cls = `group relative flex items-center gap-4 rounded-xl border p-5 transition ${
     primary
       ? "border-amber-500/60 bg-gradient-to-br from-amber-700/40 to-amber-900/20 hover:from-amber-600/50 hover:to-amber-800/30"
@@ -85,7 +85,12 @@ function MenuButton({ to, label, icon, desc, primary, disabled }: { to: string; 
   } ${disabled ? "pointer-events-none opacity-60" : ""}`;
   const inner = (
     <>
-      <span className="text-3xl">{icon}</span>
+      <span className="relative text-3xl">
+        {icon}
+        {badge && badge > 0 ? (
+          <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">{badge}</span>
+        ) : null}
+      </span>
       <span className="flex-1">
         <span className="block font-serif text-xl font-bold text-amber-200">{label}</span>
         <span className="block text-xs text-amber-200/60">{desc}</span>
@@ -95,6 +100,7 @@ function MenuButton({ to, label, icon, desc, primary, disabled }: { to: string; 
   if (disabled) return <div className={cls}>{inner}</div>;
   return <Link to={to} className={cls}>{inner}</Link>;
 }
+
 
 function Loading() {
   return <div className="h-screen w-screen flex items-center justify-center bg-black text-amber-200 font-serif">Carregando…</div>;
