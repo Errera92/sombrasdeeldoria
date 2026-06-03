@@ -2216,7 +2216,7 @@ class UIScene extends Phaser.Scene {
 
     sections.forEach(section => {
       const ids = Object.keys(UPGRADE_DEFS).filter(id =>
-        UPGRADE_DEFS[id].tower === section.key && (owned[id] | 0) > 0
+        UPGRADE_DEFS[id].tower === section.key
       );
       if (ids.length === 0) return;
 
@@ -2233,26 +2233,36 @@ class UIScene extends Phaser.Scene {
         const cost = UPGRADE_ACTIVATION_COST[id] || 0;
         const isActive = !!active[id];
         const isPreOnly = id === 'starting_gold';
+        const isLocked = lvl <= 0;
 
         const rowG = this.add.graphics();
         const rowW = w - 16, rowH = 48;
         let fill = 0x2a2418, stroke = 0x6a5a36;
         if (isActive) { fill = 0x1d4a1a; stroke = 0x6cbf4c; }
+        else if (isLocked) { fill = 0x1a1a1e; stroke = 0x3a3a44; }
         else if (isPreOnly) { fill = 0x222226; stroke = 0x444448; }
         rowG.fillStyle(fill, 0.95).fillRoundedRect(8, y, rowW, rowH, 8);
         rowG.lineStyle(1.5, stroke, 0.9).strokeRoundedRect(8, y, rowW, rowH, 8);
 
-        const ico = this.add.text(18, y + 6, def.icon, { fontSize: '22px' });
+        const nameColor = isLocked ? '#7a7466' : '#f0e0c0';
+        const subColor  = isLocked ? '#5a5448' : '#cfc09a';
+        const ico = this.add.text(18, y + 6, def.icon, { fontSize: '22px', color: nameColor }).setAlpha(isLocked ? 0.5 : 1);
         const name = this.add.text(50, y + 4, def.name, {
-          fontSize: '12px', color: '#f0e0c0', fontFamily: FONT_BTN, fontStyle: 'bold'
+          fontSize: '12px', color: nameColor, fontFamily: FONT_BTN, fontStyle: 'bold'
         });
-        const sub = this.add.text(50, y + 20, `Nível ${lvl}  ·  🪙 ${cost}`, {
-          fontSize: '11px', color: '#cfc09a', fontFamily: FONT_BTN
+        const subText = isLocked ? 'Não comprado · Loja' : `Nível ${lvl}  ·  🪙 ${cost}`;
+        const sub = this.add.text(50, y + 20, subText, {
+          fontSize: '11px', color: subColor, fontFamily: FONT_BTN
         });
         [name, sub].forEach(t => t.setShadow(1,1,'#000',2));
         this.upgradePanelContent.add([rowG, ico, name, sub]);
 
-        if (isPreOnly) {
+        if (isLocked) {
+          const tag = this.add.text(w - 18, y + rowH/2, '🔒 Loja', {
+            fontSize: '11px', color: '#8a8270', fontFamily: FONT_BTN, fontStyle: 'italic'
+          }).setOrigin(1, 0.5);
+          this.upgradePanelContent.add(tag);
+        } else if (isPreOnly) {
           const tag = this.add.text(w - 18, y + rowH/2, 'Pré-partida', {
             fontSize: '11px', color: '#a8a8b0', fontFamily: FONT_BTN, fontStyle: 'italic'
           }).setOrigin(1, 0.5);
@@ -2286,13 +2296,6 @@ class UIScene extends Phaser.Scene {
       y += 6;
     });
 
-    if (y === 0) {
-      const empty = this.add.text(this.upgradePanelW/2, 30,
-        'Compre upgrades na Loja\npara ativá-los em jogo.',
-        { fontSize:'12px', color:'#a8a08c', fontFamily: FONT_BTN, fontStyle:'italic', align:'center' }
-      ).setOrigin(0.5, 0);
-      this.upgradePanelContent.add(empty);
-    }
   }
 
   activateUpgrade(id) {
