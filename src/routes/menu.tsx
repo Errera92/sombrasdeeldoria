@@ -3,7 +3,9 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpgrades } from "@/hooks/useUpgrades";
+import { useChallenges } from "@/hooks/useChallenges";
 import { Toaster } from "@/components/ui/sonner";
+
 
 export const Route = createFileRoute("/menu")({
   component: MenuPage,
