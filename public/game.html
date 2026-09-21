@@ -264,6 +264,7 @@ const ASSETS = {
     wraith: { key: 'enemy_wraith', url: 'assets/enemy_wraith.webp' },
   },
   base: { key: 'base_keep', url: 'assets/base_keep.webp' },
+  slot: { key: 'slot_ring', url: 'assets/slot_ring.webp' },
 };
 
 // Ajustes dos sprites de torre (contentH = altura útil do PNG 256x256; h = altura exibida)
@@ -777,6 +778,7 @@ class BootScene extends Phaser.Scene {
       ...Object.values(ASSETS.towers),
       ...Object.values(ASSETS.enemies),
       ASSETS.base,
+      ASSETS.slot,
     ];
     files.forEach(asset => this.load.image(asset.key, asset.url));
   }
@@ -1071,6 +1073,7 @@ class GameScene extends Phaser.Scene {
     this.drawPath();
     this.drawBase();
     this.createSlots();
+    this.drawAmbience();
 
     this.rangeIndicator = this.add.circle(0,0,0, 0x88ddaa, 0.15)
       .setStrokeStyle(2, 0x88ddaa, 0.6).setVisible(false);
@@ -1113,7 +1116,7 @@ class GameScene extends Phaser.Scene {
     this.slots = [];
 
     // limpa mapa (bg, caminho, base)
-    for (const g of (this._mapGfx || [])) if (g && g.scene) g.destroy();
+    for (const g of (this._mapGfx || [])) if (g && g.scene) { this.tweens.killTweensOf(g); g.destroy(); }
     this._mapGfx = [];
     if (this.baseSprite && this.baseSprite.scene) { this.baseSprite.destroy(); this.baseSprite = null; }
 
@@ -1122,6 +1125,7 @@ class GameScene extends Phaser.Scene {
     this.drawPath();
     this.drawBase();
     this.createSlots();
+    this.drawAmbience();
 
     // reset de estado de onda; ouro é redefinido para o valor inicial base
     // (ouro acumulado da fase anterior é descartado ao trocar de fase).
@@ -1336,27 +1340,68 @@ class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: glow, scale: 1.25, alpha: 0.45, yoyo:true, repeat:-1, duration:1400 });
   }
 
+  // Ambiência leve: vinheta + partículas (no máx. 14 objetos) na cor do estágio.
+  drawAmbience() {
+    if (!this._mapGfx) this._mapGfx = [];
+    const bgKey = ASSETS.stageBackgrounds[this.stage.id];
+    const moteColor = { bg_floresta: 0xd8e88a, bg_ruinas: 0xc8d0dc, bg_portao: 0xc89cff }[bgKey] || 0xe8d8ff;
+
+    const v = this.add.graphics().setDepth(28);
+    for (let i = 0; i < 12; i++) {
+      const inset = i * 6 + 3;
+      const a = 0.26 * Math.pow(1 - i / 12, 2);
+      v.lineStyle(6, 0x000000, a);
+      v.strokeRect(inset, inset, W - inset * 2, H - inset * 2);
+    }
+    this._mapGfx.push(v);
+
+    for (let n = 0; n < 14; n++) {
+      const r = Phaser.Math.FloatBetween(1.2, 2.6);
+      const m = this.add.circle(Phaser.Math.Between(20, W - 20), Phaser.Math.Between(90, H - 20), r, moteColor, 0.9)
+        .setDepth(24).setAlpha(0);
+      this._mapGfx.push(m);
+      this.tweens.add({
+        targets: m,
+        x: '+=' + Phaser.Math.Between(-50, 50),
+        y: '+=' + Phaser.Math.Between(-40, 20),
+        alpha: Phaser.Math.FloatBetween(0.35, 0.8),
+        duration: Phaser.Math.Between(2500, 5000),
+        yoyo: true, repeat: -1, ease: 'Sine.inOut',
+        delay: Phaser.Math.Between(0, 2000),
+      });
+    }
+  }
+
   createSlots() {
     this.slots = this.SLOTS.map((s, i) => {
       const c = this.add.container(s.x, s.y);
+      const hasTex = this.textures.exists(ASSETS.slot.key);
       const ring = this.add.circle(0,0,22, 0x5a4a30, 0.45).setStrokeStyle(2, 0x9c8456, 0.8);
       const cross = this.add.text(0,0,"+", {fontSize:'22px', color:'#d8c89a', fontStyle:'bold'}).setOrigin(0.5);
-      c.add([ring, cross]);
+      let baseImg = null;
+      if (hasTex) {
+        baseImg = this.add.image(0, 6, ASSETS.slot.key).setDisplaySize(64, 51);
+        ring.setFillStyle(0xffd88a, 0).setStrokeStyle();
+        cross.setColor('#ffe6a8').setShadow(0, 0, '#000000', 4, true, true);
+        c.add([baseImg, ring, cross]);
+      } else {
+        c.add([ring, cross]);
+      }
       c.setSize(50,50).setInteractive({ useHandCursor: true });
       c.on('pointerover', () => {
-        ring.setFillStyle(0x9c8456, 0.6);
+        if (hasTex) ring.setFillStyle(0xffd88a, 0.3); else ring.setFillStyle(0x9c8456, 0.6);
         const slot = this.slots[i];
         if (this.selectedTowerType && !slot.tower && !this.pendingConfirm) {
           this.showPreview(i, this.selectedTowerType);
         }
       });
       c.on('pointerout', () => {
-        ring.setFillStyle(0x5a4a30, 0.45);
+        if (hasTex) ring.setFillStyle(0xffd88a, 0); else ring.setFillStyle(0x5a4a30, 0.45);
         if (!this.pendingConfirm) this.clearPreview();
       });
       c.on('pointerdown', () => this.handleSlotClick(i));
       this.slotGroup.add(c);
-      return { x: s.x, y: s.y, container: c, tower: null, ring, cross };
+      return { x: s.x, y: s.y, container: c, tower: null, ring, cross, baseImg };
     });
   }
 
