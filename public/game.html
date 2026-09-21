@@ -244,6 +244,28 @@ window.addEventListener('message', (ev) => {
 // =============== CONSTANTES ===============
 const W = 1280, H = 720;
 
+// Catálogo visual. Todas as chamadas abaixo mantêm fallback procedural quando
+// uma textura não estiver disponível.
+const ASSETS = {
+  bg: [
+    { key: 'bg_floresta', url: 'assets/bg_floresta.webp' },
+    { key: 'bg_ruinas', url: 'assets/bg_ruinas.webp' },
+    { key: 'bg_portao', url: 'assets/bg_portao.webp' },
+  ],
+  stageBackgrounds: ['bg_floresta', 'bg_ruinas', 'bg_portao', 'bg_ruinas', 'bg_portao', 'bg_ruinas'],
+  towers: {
+    archer: { key: 'tower_archer', url: 'assets/tower_archer.webp' },
+    dwarf: { key: 'tower_dwarf', url: 'assets/tower_dwarf.webp' },
+    mage: { key: 'tower_mage', url: 'assets/tower_mage.webp' },
+  },
+  enemies: {
+    orc: { key: 'enemy_orc', url: 'assets/enemy_orc.webp' },
+    troll: { key: 'enemy_troll', url: 'assets/enemy_troll.webp' },
+    wraith: { key: 'enemy_wraith', url: 'assets/enemy_wraith.webp' },
+  },
+  base: { key: 'base_keep', url: 'assets/base_keep.webp' },
+};
+
 const TOWER_TYPES = {
   archer: {
     name: "Arqueiro Élfico", cost: 50, range: 170, damage: 18, fireRate: 500,
@@ -716,6 +738,26 @@ function makeButton(scene, x, y, w, h, label, opts) {
 // =================== BOOT ===================
 class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
+  preload() {
+    const barBg = this.add.rectangle(W/2, H/2, 420, 18, 0x120d18, 0.95)
+      .setStrokeStyle(2, 0xc9a84c, 0.8);
+    const bar = this.add.rectangle(W/2 - 204, H/2, 0, 10, 0x8f62b5, 1).setOrigin(0, 0.5);
+    const label = this.add.text(W/2, H/2 - 36, 'Carregando Eldoria…', {
+      fontSize: '18px', color: '#e8d8ff', fontFamily: FONT_TITLE,
+    }).setOrigin(0.5);
+
+    this.load.on('progress', value => bar.setDisplaySize(408 * value, 10));
+    this.load.on('loaderror', file => console.warn('[Eldoria] fallback visual:', file && file.key));
+    this.load.once('complete', () => { barBg.destroy(); bar.destroy(); label.destroy(); });
+
+    const files = [
+      ...ASSETS.bg,
+      ...Object.values(ASSETS.towers),
+      ...Object.values(ASSETS.enemies),
+      ASSETS.base,
+    ];
+    files.forEach(asset => this.load.image(asset.key, asset.url));
+  }
   create() { this.scene.start('StageSelectScene'); }
 }
 
@@ -773,9 +815,23 @@ class StageSelectScene extends Phaser.Scene {
       drawCard(0xc9a84c);
       c.add(cardG);
 
-      // preview
+      // preview de cenário (com fallback procedural)
+      const bgKey = ASSETS.stageBackgrounds[s.id];
+      if (bgKey && this.textures.exists(bgKey)) {
+        const previewX = 0;
+        const previewY = -cardH/2 + 161;
+        const previewImage = this.add.image(previewX, previewY, bgKey).setDisplaySize(cardW-24, 130);
+        const maskShape = this.make.graphics({ x: 0, y: 0, add: false });
+        maskShape.fillStyle(0xffffff, 1).fillRoundedRect(
+          x + 12, y + 96, cardW - 24, 130, 10
+        );
+        previewImage.setMask(maskShape.createGeometryMask());
+        c.add(previewImage);
+      }
       const prev = this.add.graphics();
-      prev.fillStyle(s.palette.moss, 1).fillRoundedRect(-cardW/2+12, -cardH/2+96, cardW-24, 130, 10);
+      if (!bgKey || !this.textures.exists(bgKey)) {
+        prev.fillStyle(s.palette.moss, 1).fillRoundedRect(-cardW/2+12, -cardH/2+96, cardW-24, 130, 10);
+      }
       prev.lineStyle(8, s.palette.pathEdge, 1);
       prev.beginPath();
       const px = (p) => -cardW/2+12 + (p.x+30)/1340 * (cardW-24);
@@ -1158,6 +1214,14 @@ class GameScene extends Phaser.Scene {
   drawBackground() {
     const p = this.stage.palette;
     if (!this._mapGfx) this._mapGfx = [];
+    const bgKey = ASSETS.stageBackgrounds[this.stage.id];
+    if (bgKey && this.textures.exists(bgKey)) {
+      const bg = this.add.image(W/2, H/2, bgKey).setDisplaySize(W, H).setDepth(-20);
+      this._mapGfx.push(bg);
+      this.parallax1 = null;
+      this.parallax2 = null;
+      return;
+    }
     const g = this.add.graphics();
     g.fillStyle(p.fog,1).fillRect(0,0,W,H);
     g.fillStyle(p.bg,1).fillRect(0,80,W,H-80);
@@ -1201,9 +1265,13 @@ class GameScene extends Phaser.Scene {
     const p = this.stage.palette;
     if (!this._mapGfx) this._mapGfx = [];
     const g = this.add.graphics();
-    g.lineStyle(56, p.pathEdge, 1);
+    g.lineStyle(66, 0x000000, 0.38);
+    this.strokePath(g);
+    g.lineStyle(58, p.pathEdge, 0.96);
     this.strokePath(g);
     g.lineStyle(46, p.path, 1);
+    this.strokePath(g);
+    g.lineStyle(2, p.mossL, 0.22);
     this.strokePath(g);
     g.fillStyle(0x000000, 0.2);
     for (let i=0;i<this.PATH.length-1;i++){
