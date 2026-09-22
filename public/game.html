@@ -2358,7 +2358,6 @@ class UIScene extends Phaser.Scene {
 
   buildTowerPanel() {
     const panelW = 72;
-    const icons = { archer: '🏹', dwarf: '⛏️', mage: '🔮' };
     const shortName = { archer: 'Arqueiro', dwarf: 'Anão', mage: 'Mago' };
     this.towerPanel = this.add.container(0, 0).setDepth(40);
     const bg = this.add.graphics();
@@ -2382,10 +2381,15 @@ class UIScene extends Phaser.Scene {
         frame.lineStyle(selected ? 3 : 1.5, stroke, selected ? 1 : 0.9).strokeRoundedRect(-30, -38, 60, 76, 10);
       };
       drawFrame(false);
-      const swatch = this.add.graphics();
-      swatch.fillStyle(def.color, 1).fillRoundedRect(-16, -32, 32, 22, 4);
-      swatch.lineStyle(1, 0x000000, 1).strokeRoundedRect(-16, -32, 32, 22, 4);
-      const icon = this.add.text(0, -21, icons[key] || '⚔️', { fontSize: '16px' }).setOrigin(0.5);
+      const texture = ASSETS.towers[key];
+      let thumbnail;
+      if (texture && this.textures.exists(texture.key)) {
+        thumbnail = this.add.image(0, -21, texture.key).setOrigin(0.5);
+        const thumbScale = 34 / thumbnail.height;
+        thumbnail.setDisplaySize(thumbnail.width * thumbScale, 34);
+      } else {
+        thumbnail = this.add.rectangle(0, -21, 28, 34, def.color).setStrokeStyle(1, 0x000000);
+      }
       const name = this.add.text(0, 4, shortName[key] || def.name, {
         fontSize: '11px', color: '#f0e0c0', fontFamily: FONT_BTN, fontStyle: 'bold'
       }).setOrigin(0.5);
@@ -2393,7 +2397,7 @@ class UIScene extends Phaser.Scene {
         fontSize: '12px', color: '#ffcc44', fontFamily: FONT_BTN, fontStyle: 'bold'
       }).setOrigin(0.5);
       [name, cost].forEach(t => t.setShadow(1, 1, '#000', 2));
-      cell.add([frame, swatch, icon, name, cost]);
+      cell.add([frame, thumbnail, name, cost]);
       cell.setSize(60, 76).setInteractive({ useHandCursor: true });
       cell.on('pointerdown', () => {
         if (this.gameScene) this.gameScene.setSelectedTowerType(key);
@@ -2462,14 +2466,20 @@ class UIScene extends Phaser.Scene {
       };
       const canAfford = game.state.gold >= def.cost;
       drawRow(0x2a2418, canAfford ? 0xc9a84c : 0x6a5a36);
-      const swatchG = this.add.graphics();
-      swatchG.fillStyle(def.color, 1).fillRoundedRect(14, yy + rowH/2 - 13, 20, 26, 4);
-      swatchG.lineStyle(1, 0x000, 1).strokeRoundedRect(14, yy + rowH/2 - 13, 20, 26, 4);
+      const texture = ASSETS.towers[key];
+      let thumbnail;
+      if (texture && this.textures.exists(texture.key)) {
+        thumbnail = this.add.image(26, yy + rowH/2, texture.key).setOrigin(0.5);
+        const thumbScale = 34 / thumbnail.height;
+        thumbnail.setDisplaySize(thumbnail.width * thumbScale, 34);
+      } else {
+        thumbnail = this.add.rectangle(26, yy + rowH/2, 28, 34, def.color).setStrokeStyle(1, 0x000000);
+      }
       const name = this.add.text(44, yy + 6, def.name, {fontSize:'14px', color:'#f0e0c0', fontFamily: FONT_BTN, fontStyle:'bold'});
       const cost = this.add.text(44, yy + 24, `Custo: ${def.cost}`, {fontSize:'12px', color: canAfford ? '#ffcc44' : '#aa6666', fontFamily: FONT_BTN, fontStyle:'bold'});
       const desc = this.add.text(44, yy + 40, def.desc, {fontSize:'11px', color:'#a8a08c', fontFamily: FONT_BTN});
       [name, cost].forEach(t=>t.setShadow(1,1,'#000',2));
-      c.add([rg, swatchG, name, cost, desc]);
+      c.add([rg, thumbnail, name, cost, desc]);
 
       const hit = this.add.zone(4, yy, rowW, rowH).setOrigin(0).setInteractive({useHandCursor: true});
       hit.on('pointerover', () => drawRow(0x3d3424, 0xffe88a));
