@@ -267,28 +267,6 @@ const ASSETS = {
   slot: { key: 'slot_ring', url: 'assets/slot_ring.webp' },
 };
 
-// Ajustes dos sprites de torre (contentH = altura útil do PNG 256x256; h = altura exibida)
-const TOWER_SPRITES = {
-  archer: { contentH: 247, originY: 0.965, h: 92, baseY: 16, flash: { x: 0, y: -52 } },
-  dwarf:  { contentH: 239, originY: 0.961, h: 78, baseY: 16, flash: { x: 0, y: -44 } },
-  mage:   { contentH: 237, originY: 0.945, h: 96, baseY: 16, flash: { x: 0, y: -70 } },
-};
-// Sprites de inimigos (PNG 256x256). Tipos sem sprite continuam procedurais.
-const ENEMY_SPRITES = {
-  orc:    { contentH: 223, originY: 0.949, h: 52, baseY: 13 },
-  troll:  { contentH: 246, originY: 0.984, h: 68, baseY: 17 },
-  wraith: { contentH: 234, originY: 0.953, h: 56, baseY: 12 },
-};
-function enemyTexKey(scene, typeKey) {
-  const a = ASSETS.enemies[typeKey];
-  return (a && ENEMY_SPRITES[typeKey] && scene.textures.exists(a.key)) ? a.key : null;
-}
-const BASE_SPRITE = { contentH: 250, originY: 0.98, h: 150, baseY: 30 };
-function towerTexKey(scene, typeKey) {
-  const a = ASSETS.towers[typeKey];
-  return (a && scene.textures.exists(a.key)) ? a.key : null;
-}
-
 const TOWER_TYPES = {
   archer: {
     name: "Arqueiro Élfico", cost: 50, range: 170, damage: 18, fireRate: 500,
@@ -1073,7 +1051,6 @@ class GameScene extends Phaser.Scene {
     this.drawPath();
     this.drawBase();
     this.createSlots();
-    this.drawAmbience();
 
     this.rangeIndicator = this.add.circle(0,0,0, 0x88ddaa, 0.15)
       .setStrokeStyle(2, 0x88ddaa, 0.6).setVisible(false);
@@ -1116,7 +1093,7 @@ class GameScene extends Phaser.Scene {
     this.slots = [];
 
     // limpa mapa (bg, caminho, base)
-    for (const g of (this._mapGfx || [])) if (g && g.scene) { this.tweens.killTweensOf(g); g.destroy(); }
+    for (const g of (this._mapGfx || [])) if (g && g.scene) g.destroy();
     this._mapGfx = [];
     if (this.baseSprite && this.baseSprite.scene) { this.baseSprite.destroy(); this.baseSprite = null; }
 
@@ -1125,7 +1102,6 @@ class GameScene extends Phaser.Scene {
     this.drawPath();
     this.drawBase();
     this.createSlots();
-    this.drawAmbience();
 
     // reset de estado de onda; ouro é redefinido para o valor inicial base
     // (ouro acumulado da fase anterior é descartado ao trocar de fase).
@@ -1323,85 +1299,47 @@ class GameScene extends Phaser.Scene {
   drawBase() {
     const last = this.PATH[this.PATH.length-1];
     const bx = last.x + (last.x > W/2 ? -10 : 10), by = last.y;
-    this.baseSprite = this.add.container(bx, by).setDepth(1 + by/1000);
-    if (this.textures.exists(ASSETS.base.key)) {
-      const glow = this.add.circle(0,-30,56, 0x9a5fbf, 0.25);
-      const img = this.add.image(0, BASE_SPRITE.baseY, ASSETS.base.key)
-        .setOrigin(0.5, BASE_SPRITE.originY).setScale(BASE_SPRITE.h / BASE_SPRITE.contentH);
-      this.baseSprite.add([glow, img]);
-      this.tweens.add({ targets: glow, scale: 1.25, alpha: 0.45, yoyo:true, repeat:-1, duration:1400 });
-      return;
-    }
+    this.baseSprite = this.add.container(bx, by);
     const glow = this.add.circle(0,0,50, 0x9a5fbf, 0.25);
-    const tower = this.add.rectangle(0,0,52,72, 0x6a3a8a).setStrokeStyle(2, 0x2a1438);
-    const top = this.add.triangle(0,-46, -28,0, 28,0, 0,-22, 0x4a2870);
-    const rune = this.add.text(0,0,"⚜", {fontSize:'28px', color:'#ffd9ff'}).setOrigin(0.5);
-    this.baseSprite.add([glow, tower, top, rune]);
+    this.baseSprite.add(glow);
+    if (this.textures.exists(ASSETS.base.key)) {
+      const keep = this.add.image(0, 18, ASSETS.base.key).setOrigin(0.5, 0.85);
+      const scale = 150 / keep.height;
+      keep.setDisplaySize(keep.width * scale, 150);
+      this.baseSprite.add(keep);
+    } else {
+      const tower = this.add.rectangle(0,0,52,72, 0x6a3a8a).setStrokeStyle(2, 0x2a1438);
+      const top = this.add.triangle(0,-46, -28,0, 28,0, 0,-22, 0x4a2870);
+      const rune = this.add.text(0,0,"⚜", {fontSize:'28px', color:'#ffd9ff'}).setOrigin(0.5);
+      this.baseSprite.add([tower, top, rune]);
+    }
     this.tweens.add({ targets: glow, scale: 1.25, alpha: 0.45, yoyo:true, repeat:-1, duration:1400 });
-  }
-
-  // Ambiência leve: vinheta + partículas (no máx. 14 objetos) na cor do estágio.
-  drawAmbience() {
-    if (!this._mapGfx) this._mapGfx = [];
-    const bgKey = ASSETS.stageBackgrounds[this.stage.id];
-    const moteColor = { bg_floresta: 0xd8e88a, bg_ruinas: 0xc8d0dc, bg_portao: 0xc89cff }[bgKey] || 0xe8d8ff;
-
-    const v = this.add.graphics().setDepth(28);
-    for (let i = 0; i < 12; i++) {
-      const inset = i * 6 + 3;
-      const a = 0.26 * Math.pow(1 - i / 12, 2);
-      v.lineStyle(6, 0x000000, a);
-      v.strokeRect(inset, inset, W - inset * 2, H - inset * 2);
-    }
-    this._mapGfx.push(v);
-
-    for (let n = 0; n < 14; n++) {
-      const r = Phaser.Math.FloatBetween(1.2, 2.6);
-      const m = this.add.circle(Phaser.Math.Between(20, W - 20), Phaser.Math.Between(90, H - 20), r, moteColor, 0.9)
-        .setDepth(24).setAlpha(0);
-      this._mapGfx.push(m);
-      this.tweens.add({
-        targets: m,
-        x: '+=' + Phaser.Math.Between(-50, 50),
-        y: '+=' + Phaser.Math.Between(-40, 20),
-        alpha: Phaser.Math.FloatBetween(0.35, 0.8),
-        duration: Phaser.Math.Between(2500, 5000),
-        yoyo: true, repeat: -1, ease: 'Sine.inOut',
-        delay: Phaser.Math.Between(0, 2000),
-      });
-    }
   }
 
   createSlots() {
     this.slots = this.SLOTS.map((s, i) => {
       const c = this.add.container(s.x, s.y);
-      const hasTex = this.textures.exists(ASSETS.slot.key);
-      const ring = this.add.circle(0,0,22, 0x5a4a30, 0.45).setStrokeStyle(2, 0x9c8456, 0.8);
+      const textured = this.textures.exists(ASSETS.slot.key);
+      const ring = textured
+        ? this.add.image(0, 0, ASSETS.slot.key).setDisplaySize(56, 56)
+        : this.add.circle(0,0,22, 0x5a4a30, 0.45).setStrokeStyle(2, 0x9c8456, 0.8);
       const cross = this.add.text(0,0,"+", {fontSize:'22px', color:'#d8c89a', fontStyle:'bold'}).setOrigin(0.5);
-      let baseImg = null;
-      if (hasTex) {
-        baseImg = this.add.image(0, 6, ASSETS.slot.key).setDisplaySize(64, 51);
-        ring.setFillStyle(0xffd88a, 0).setStrokeStyle();
-        cross.setColor('#ffe6a8').setShadow(0, 0, '#000000', 4, true, true);
-        c.add([baseImg, ring, cross]);
-      } else {
-        c.add([ring, cross]);
-      }
-      c.setSize(50,50).setInteractive({ useHandCursor: true });
+      c.add([ring, cross]);
+      c.setSize(56,56).setInteractive({ useHandCursor: true });
       c.on('pointerover', () => {
-        if (hasTex) ring.setFillStyle(0xffd88a, 0.3); else ring.setFillStyle(0x9c8456, 0.6);
+        if (textured) ring.setTint(0xd8c98e); else ring.setFillStyle(0x9c8456, 0.6);
         const slot = this.slots[i];
         if (this.selectedTowerType && !slot.tower && !this.pendingConfirm) {
           this.showPreview(i, this.selectedTowerType);
         }
       });
       c.on('pointerout', () => {
-        if (hasTex) ring.setFillStyle(0xffd88a, 0); else ring.setFillStyle(0x5a4a30, 0.45);
+        if (textured) ring.clearTint(); else ring.setFillStyle(0x5a4a30, 0.45);
         if (!this.pendingConfirm) this.clearPreview();
       });
       c.on('pointerdown', () => this.handleSlotClick(i));
       this.slotGroup.add(c);
-      return { x: s.x, y: s.y, container: c, tower: null, ring, cross, baseImg };
+      return { x: s.x, y: s.y, container: c, tower: null, ring, cross };
     });
   }
 
@@ -1437,14 +1375,8 @@ class GameScene extends Phaser.Scene {
     const r = def.range * rangeMul;
     const ring = this.add.circle(slot.x, slot.y, r, def.color, 0.2)
       .setStrokeStyle(2, def.color, 0.7).setDepth(15);
-    const pk = towerTexKey(this, typeKey);
-    const ghost = pk
-      ? this.add.image(slot.x, slot.y + TOWER_SPRITES[typeKey].baseY, pk)
-          .setOrigin(0.5, TOWER_SPRITES[typeKey].originY)
-          .setScale(TOWER_SPRITES[typeKey].h / TOWER_SPRITES[typeKey].contentH)
-          .setAlpha(0.5).setDepth(16)
-      : this.add.circle(slot.x, slot.y, 18, def.color, 1)
-          .setStrokeStyle(2, 0xffffff, 0.9).setAlpha(0.4).setDepth(16);
+    const ghost = this.add.circle(slot.x, slot.y, 18, def.color, 1)
+      .setStrokeStyle(2, 0xffffff, 0.9).setAlpha(0.4).setDepth(16);
     this.previewGfx = { ring, ghost };
   }
 
@@ -1532,141 +1464,40 @@ class GameScene extends Phaser.Scene {
     slot.container.disableInteractive();
     slot.ring.setVisible(false); slot.cross.setVisible(false);
 
-    const c = this.add.container(slot.x, slot.y);
+    const c = this.add.container(slot.x, slot.y).setDepth(2 + slot.y / 1000);
 
     // sombra projetada no chão
     const shadow = this.add.ellipse(0, 18, 42, 12, 0x000000, 0.45);
     c.add(shadow);
 
-    // base octogonal/trapezoidal/cilíndrica + topo distinto
-    const g = this.add.graphics();
     let topPart = null;
-    let flashPos = { x: 0, y: -18 };
+    const visual = {
+      archer: { height: 92, topY: -70, glow: 0xffd700, duration: 1100 },
+      dwarf: { height: 78, topY: -50, glow: 0xff7a1a, duration: 700 },
+      mage: { height: 96, topY: -74, glow: 0xc89cff, duration: 1200 },
+    }[typeKey];
+    const texture = ASSETS.towers[typeKey];
+    let flashPos = { x: 0, y: visual ? visual.topY : -18 };
 
-    const texKey = towerTexKey(this, typeKey);
-    if (texKey) {
-      const cfg = TOWER_SPRITES[typeKey];
-      const spr = this.add.image(0, cfg.baseY, texKey)
-        .setOrigin(0.5, cfg.originY).setScale(cfg.h / cfg.contentH);
-      c.add(spr);
-      if (typeKey === 'archer') {
-        topPart = this.add.circle(0, -50, 4, 0xffd700, 0).setStrokeStyle(1.5, 0xffffaa, 0.9);
-        c.add(topPart);
-        this.tweens.add({ targets: topPart, scale: 1.4, alpha: 0.4, yoyo: true, repeat: -1, duration: 1100 });
-      } else if (typeKey === 'dwarf') {
-        topPart = this.add.circle(0, -2, 5, 0xff7a1a, 0).setStrokeStyle(2, 0xffaa44, 0.7);
-        c.add(topPart);
-        this.tweens.add({ targets: topPart, scale: 1.5, alpha: 0.3, yoyo: true, repeat: -1, duration: 700 });
-      } else {
-        topPart = this.add.circle(0, -40, 26, 0xc89cff, 0.18);
-        c.addAt(topPart, 1);
-        this.tweens.add({ targets: topPart, scale: 1.3, alpha: 0.05, yoyo: true, repeat: -1, duration: 1200 });
-      }
-      flashPos = { x: cfg.flash.x, y: cfg.flash.y };
-    } else if (typeKey === 'archer') {
-      // base octogonal verde-esmeralda
-      const oct = [];
-      for (let i=0;i<8;i++){
-        const a = (Math.PI*2*i/8) + Math.PI/8;
-        oct.push(Math.cos(a)*18, Math.sin(a)*7 + 8);
-      }
-      g.fillStyle(0x1a3328, 1).fillPoints(oct.map((v,i)=>({x:v, y: oct[i+1]})).filter((_,i)=>i%2===0), true);
-      g.fillStyle(0x2d6a4f, 1);
-      g.beginPath();
-      for (let i=0;i<oct.length;i+=2){
-        if (i===0) g.moveTo(oct[i], oct[i+1]-4);
-        else g.lineTo(oct[i], oct[i+1]-4);
-      }
-      g.closePath().fillPath();
-      g.lineStyle(1, 0x0d1a14, 1).strokePath();
-      // corpo cilíndrico fino
-      g.fillStyle(0x2d6a4f, 1).fillRect(-7, -18, 14, 22);
-      g.lineStyle(1, 0x0d1a14, 1).strokeRect(-7, -18, 14, 22);
-      // topo em ponta élfica com 2 orelhas
-      g.fillStyle(0x3d8a6a, 1);
-      g.beginPath();
-      g.moveTo(-9, -18); g.lineTo(0, -34); g.lineTo(9, -18); g.closePath().fillPath();
-      g.lineStyle(1, 0x0d1a14, 1).strokePath();
-      // orelhas
-      g.fillStyle(0x2d6a4f, 1);
-      g.fillTriangle(-11, -20, -16, -28, -7, -22);
-      g.fillTriangle( 11, -20,  16, -28,  7, -22);
-      // gema dourada
-      g.fillStyle(0xffd700, 1).fillCircle(0, -22, 3);
-      g.lineStyle(1, 0xffffff, 0.7).strokeCircle(0, -22, 3);
-      c.add(g);
-      topPart = this.add.circle(0, -22, 4, 0xffd700, 0).setStrokeStyle(1.5, 0xffffaa, 0.9);
+    if (visual && texture && this.textures.exists(texture.key)) {
+      const sprite = this.add.image(0, 20, texture.key).setOrigin(0.5, 0.85);
+      const scale = visual.height / sprite.height;
+      sprite.setDisplaySize(sprite.width * scale, visual.height);
+      c.add(sprite);
+      topPart = this.add.circle(0, visual.topY, typeKey === 'mage' ? 14 : 5, visual.glow, typeKey === 'mage' ? 0.14 : 0)
+        .setStrokeStyle(typeKey === 'mage' ? 1 : 2, visual.glow, 0.8);
       c.add(topPart);
-      this.tweens.add({ targets: topPart, scale: 1.4, alpha: 0.4, yoyo: true, repeat: -1, duration: 1100 });
-      flashPos = { x: 0, y: -22 };
-
-    } else if (typeKey === 'dwarf') {
-      // base trapezoidal larga em granito
-      g.fillStyle(0x2a2a2a, 1);
-      g.beginPath();
-      g.moveTo(-22, 14); g.lineTo(22, 14); g.lineTo(18, -10); g.lineTo(-18, -10);
-      g.closePath().fillPath();
-      g.lineStyle(1.5, 0x111111, 1).strokePath();
-      g.fillStyle(0x4a4a4a, 1);
-      g.beginPath();
-      g.moveTo(-20, 12); g.lineTo(20, 12); g.lineTo(16, -8); g.lineTo(-16, -8);
-      g.closePath().fillPath();
-      // linhas de blocos
-      g.lineStyle(1, 0x2a2a2a, 0.8);
-      g.beginLine = true;
-      for (const yy of [-2, 6]) {
-        g.beginPath(); g.moveTo(-18, yy); g.lineTo(18, yy); g.strokePath();
-      }
-      for (const xx of [-10, 0, 10]) {
-        g.beginPath(); g.moveTo(xx, -8); g.lineTo(xx, 12); g.strokePath();
-      }
-      // torre central
-      g.fillStyle(0x5a5a5a, 1).fillRect(-12, -22, 24, 14);
-      g.lineStyle(1, 0x1a1a1a, 1).strokeRect(-12, -22, 24, 14);
-      // 3 ameias no topo
-      for (const ax of [-12, -3, 6]) {
-        g.fillStyle(0x4a4a4a, 1).fillRect(ax, -28, 6, 6);
-        g.lineStyle(1, 0x1a1a1a, 1).strokeRect(ax, -28, 6, 6);
-      }
-      // forja acesa
-      g.fillStyle(0xff7a1a, 1).fillCircle(0, -14, 4);
-      g.fillStyle(0xffdd66, 0.8).fillCircle(0, -14, 2);
+      this.tweens.add({ targets: topPart, scale: typeKey === 'dwarf' ? 1.5 : 1.35, alpha: 0.35, yoyo: true, repeat: -1, duration: visual.duration });
+    } else {
+      const g = this.add.graphics();
+      g.fillStyle(def.color, 1).fillRoundedRect(-16, -28, 32, 44, 5);
+      g.lineStyle(2, 0x17120f, 1).strokeRoundedRect(-16, -28, 32, 44, 5);
+      g.fillStyle(typeKey === 'dwarf' ? 0xff7a1a : 0xffd700, 1).fillCircle(0, -24, 4);
       c.add(g);
-      topPart = this.add.circle(0, -14, 5, 0xff7a1a, 0).setStrokeStyle(2, 0xffaa44, 0.7);
-      c.add(topPart);
-      this.tweens.add({ targets: topPart, scale: 1.5, alpha: 0.3, yoyo: true, repeat: -1, duration: 700 });
-      flashPos = { x: 0, y: -14 };
-
-    } else if (typeKey === 'mage') {
-      // base cilíndrica roxa
-      g.fillStyle(0x3a0858, 1).fillEllipse(0, 12, 36, 12);
-      g.fillStyle(0x6a0dad, 1).fillRect(-13, -14, 26, 26);
-      g.lineStyle(1.5, 0x2a0844, 1).strokeRect(-13, -14, 26, 26);
-      // runas (losangos) ao redor
-      g.fillStyle(0xc89cff, 1);
-      for (const rx of [-13, 13]) {
-        for (const ry of [-6, 6]) {
-          g.fillTriangle(rx, ry-3, rx+3, ry, rx, ry+3);
-          g.fillTriangle(rx, ry-3, rx-3, ry, rx, ry+3);
-        }
-      }
-      // topo cônico
-      g.fillStyle(0x4a0a78, 1);
-      g.fillTriangle(-14, -14, 14, -14, 0, -34);
-      g.lineStyle(1, 0x2a0844, 1).strokePath();
-      // gema topo
-      g.fillStyle(0xffd700, 1).fillCircle(0, -32, 3);
-      c.add(g);
-      // aura pulsante
-      const aura = this.add.circle(0, -4, 24, 0xc89cff, 0.18);
-      c.addAt(aura, 1);
-      this.tweens.add({ targets: aura, scale: 1.3, alpha: 0.05, yoyo: true, repeat: -1, duration: 1200 });
-      topPart = aura;
-      flashPos = { x: 0, y: -10 };
+      flashPos = { x: 0, y: -24 };
     }
 
     c.setSize(56,56).setInteractive({ useHandCursor: true });
-    c.setDepth(1 + slot.y/1000); // torres mais abaixo ficam por cima
 
     const tower = { x: slot.x, y: slot.y, type: typeKey, def, container: c, lastFire: 0, target: null, flashPos };
     slot.tower = tower;
@@ -1706,33 +1537,7 @@ class GameScene extends Phaser.Scene {
     const shadow = this.add.ellipse(0, sz/2+2, sz*0.9, sz*0.35, 0x000000, 0.45);
     c.add(shadow);
 
-    let hpWOverride = null, hpYOverride = null, spriteBody = null;
-    const eTex = enemyTexKey(this, wave.type);
-    if (eTex) {
-      const cfg = ENEMY_SPRITES[wave.type];
-      const k = cfg.h / cfg.contentH;
-      shadow.setScale(1.5, 1.3);
-      if (wave.type === 'wraith') {
-        const halo = this.add.ellipse(0, -cfg.h*0.35, cfg.h*0.8, cfg.h*1.0, 0x6a3a8a, 0.22);
-        c.add(halo);
-        this.tweens.add({ targets: halo, alpha: 0.08, scale: 1.15, yoyo: true, repeat: -1, duration: 900 });
-      }
-      body = this.add.image(0, cfg.baseY, eTex).setOrigin(0.5, cfg.originY).setScale(k);
-      spriteBody = body;
-      c.add(body);
-      // animações apenas no sprite filho (nunca no container, que se move em update())
-      if (wave.type === 'orc') {
-        this.tweens.add({ targets: body, y: '+=2', yoyo: true, repeat: -1, duration: 180, ease: 'Sine.inOut' });
-      } else if (wave.type === 'troll') {
-        this.tweens.add({ targets: body, scaleY: k*0.96, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.inOut' });
-      } else {
-        this.tweens.add({ targets: body, y: '-=5', yoyo: true, repeat: -1, duration: 800, ease: 'Sine.inOut' });
-        this.tweens.add({ targets: body, alpha: 0.75, yoyo: true, repeat: -1, duration: 700 });
-      }
-      hpWOverride = Math.max(sz + 8, Math.round(cfg.h * 0.55));
-      hpYOverride = cfg.baseY - cfg.h - 8;
-
-    } else if (wave.type === 'orc') {
+    if (wave.type === 'orc') {
       // corpo oval verde-musgo
       body = this.add.ellipse(0, 2, sz*0.95, sz*1.05, 0x556b2f).setStrokeStyle(2, 0x2a3318);
       // cabeça redonda
@@ -1849,7 +1654,7 @@ class GameScene extends Phaser.Scene {
 
 
     // HP bar arredondada via Graphics
-    const hpW = hpWOverride || (sz + 8), hpH = 6, hpY = hpYOverride != null ? hpYOverride : (-sz/2 - 10);
+    const hpW = sz + 8, hpH = 6, hpY = -sz/2 - 10;
     const hpG = this.add.graphics();
     const drawHp = (ratio) => {
       hpG.clear();
@@ -1862,7 +1667,7 @@ class GameScene extends Phaser.Scene {
     c.add(hpG);
 
     const enemy = {
-      container: c, body, sprite: spriteBody, type: wave.type, typeDef: t,
+      container: c, body, type: wave.type, typeDef: t,
       hp: wave.hp, maxHp: wave.hp, speed: wave.speed,
       pathIndex: 1, alive: true, reward: t.reward,
       hpG, drawHp,
@@ -1888,7 +1693,7 @@ class GameScene extends Phaser.Scene {
 
     if (key === 'fire') {
       this.cameras.main.flash(200, 200, 80, 0);
-      const overlay = this.add.rectangle(W/2,H/2,W,H, 0xff4400, 0.25).setDepth(30);
+      const overlay = this.add.rectangle(W/2,H/2,W,H, 0xff4400, 0.25);
       this.tweens.add({ targets: overlay, alpha:0, duration:3000, onComplete:()=>overlay.destroy() });
       // dano em área a cada 300ms por 3s
       let ticks = 0;
@@ -1903,7 +1708,7 @@ class GameScene extends Phaser.Scene {
     } else if (key === 'ice') {
       this.state.freezeUntil = now + 4000;
       this.cameras.main.flash(150, 100, 200, 255);
-      const overlay = this.add.rectangle(W/2,H/2,W,H, 0x88ccff, 0.3).setDepth(30);
+      const overlay = this.add.rectangle(W/2,H/2,W,H, 0x88ccff, 0.3);
       this.tweens.add({ targets: overlay, alpha:0, duration:4000, onComplete:()=>overlay.destroy() });
       for (const e of this.activeEnemies) if (e.alive) e.body.setTint && e.body.setTint(0x88ccff);
     } else if (key === 'lightning') {
@@ -1912,7 +1717,7 @@ class GameScene extends Phaser.Scene {
       sorted.forEach((e,i) => {
         this.time.delayedCall(i*80, () => {
           if (!e.alive) return;
-          const line = this.add.line(0,0, prev.x, prev.y, e.container.x, e.container.y, 0xffffaa).setOrigin(0,0).setLineWidth(3).setDepth(30);
+          const line = this.add.line(0,0, prev.x, prev.y, e.container.x, e.container.y, 0xffffaa).setOrigin(0,0).setLineWidth(3);
           this.tweens.add({ targets: line, alpha:0, duration:300, onComplete:()=>line.destroy() });
           this.spawnSpark(e.container.x, e.container.y, 0xffff88, 8);
           this.hitEnemy(e, 99999);
@@ -1922,11 +1727,11 @@ class GameScene extends Phaser.Scene {
     } else if (key === 'wall') {
       this.state.wallUntil = now + 6000;
       const mid = this.PATH[Math.floor(this.PATH.length/2)];
-      const wall = this.add.rectangle(mid.x, mid.y, 60, 60, 0x888888).setStrokeStyle(3, 0x444).setDepth(30);
+      const wall = this.add.rectangle(mid.x, mid.y, 60, 60, 0x888888).setStrokeStyle(3, 0x444);
       this.tweens.add({ targets: wall, alpha:0, duration:6000, onComplete:()=>wall.destroy() });
     } else if (key === 'gold') {
       this.state.gold += 100;
-      const t = this.add.text(W/2, H/2, "+100 OURO", {fontSize:'48px', color:'#ffcc44', fontStyle:'bold'}).setOrigin(0.5).setDepth(30);
+      const t = this.add.text(W/2, H/2, "+100 OURO", {fontSize:'48px', color:'#ffcc44', fontStyle:'bold'}).setOrigin(0.5);
       this.tweens.add({ targets: t, y: H/2-80, alpha:0, duration:1500, onComplete:()=>t.destroy() });
     }
     this.events.emit('stateUpdate', this.state);
@@ -1936,7 +1741,7 @@ class GameScene extends Phaser.Scene {
     for (let i=0;i<n;i++){
       const ang = Math.random()*Math.PI*2;
       const sp = 60 + Math.random()*120;
-      const p = this.add.circle(x,y,3,color).setDepth(30);
+      const p = this.add.circle(x,y,3,color);
       const dx = Math.cos(ang)*sp, dy = Math.sin(ang)*sp;
       this.tweens.add({ targets: p, x: x+dx, y: y+dy, alpha:0, scale:0.2, duration: 500, onComplete:()=>p.destroy() });
     }
@@ -1961,13 +1766,11 @@ class GameScene extends Phaser.Scene {
       if (!e.alive) continue;
       if (frozen) continue;
       if (wallActive && e.pathIndex === wallIdx) continue;
-      e.container.setDepth(1 + e.container.y/1000 + 0.0005);
       const target = this.PATH[e.pathIndex];
       if (!target) continue;
       const dx = target.x - e.container.x, dy = target.y - e.container.y;
       const dist = Math.hypot(dx, dy);
       const step = e.speed * dt;
-      if (e.sprite && Math.abs(dx) > 1) e.sprite.setFlipX(dx < 0);
       if (step >= dist) {
         e.container.x = target.x; e.container.y = target.y;
         e.pathIndex++;
@@ -1978,7 +1781,7 @@ class GameScene extends Phaser.Scene {
       }
     }
     // remover gelo tint quando passar
-    if (!frozen) for (const e of this.activeEnemies) if (e.alive && e.body.clearTint && !(e.flashUntil > time)) e.body.clearTint();
+    if (!frozen) for (const e of this.activeEnemies) if (e.alive && e.body.clearTint) e.body.clearTint();
 
     // torres atiram (escala com speed)
     for (const t of this.towers) {
@@ -1991,7 +1794,7 @@ class GameScene extends Phaser.Scene {
         t.pulseUntil = time + 70;
         // flash branco rápido no topo da torre
         const fp = t.flashPos || { x: 0, y: -16 };
-        const flash = this.add.circle(t.x + fp.x, t.y + fp.y, 12, 0xffffff, 0.85).setDepth(30);
+        const flash = this.add.circle(t.x + fp.x, t.y + fp.y, 12, 0xffffff, 0.85);
         this.tweens.add({ targets: flash, alpha: 0, scale: 2, duration: 160, onComplete: () => flash.destroy() });
       }
     }
@@ -2147,15 +1950,7 @@ class GameScene extends Phaser.Scene {
     e.hp -= dmg;
     const ratio = Math.max(0, e.hp / e.maxHp);
     if (e.drawHp) e.drawHp(ratio); else if (e.hpBar) e.hpBar.width = e.hpBarW * ratio;
-    if (e.body.setTintFill) {
-      e.flashUntil = this.time.now + 70;
-      e.body.setTintFill(0xffffff);
-      this.time.delayedCall(60, () => {
-        if (!e.alive || !e.body || !e.body.scene) return;
-        if (this.time.now < this.state.freezeUntil) e.body.setTint(0x88ccff);
-        else e.body.clearTint();
-      });
-    } else if (e.body.setFillStyle) {
+    if (e.body.setFillStyle) {
       const orig = e.typeDef.color;
       e.body.setFillStyle(0xffffff);
       this.time.delayedCall(60, () => { if (e.alive && e.body.setFillStyle) e.body.setFillStyle(orig); });
@@ -2563,7 +2358,6 @@ class UIScene extends Phaser.Scene {
 
   buildTowerPanel() {
     const panelW = 72;
-    const icons = { archer: '🏹', dwarf: '⛏️', mage: '🔮' };
     const shortName = { archer: 'Arqueiro', dwarf: 'Anão', mage: 'Mago' };
     this.towerPanel = this.add.container(0, 0).setDepth(40);
     const bg = this.add.graphics();
@@ -2587,15 +2381,14 @@ class UIScene extends Phaser.Scene {
         frame.lineStyle(selected ? 3 : 1.5, stroke, selected ? 1 : 0.9).strokeRoundedRect(-30, -38, 60, 76, 10);
       };
       drawFrame(false);
-      const thumbKey = towerTexKey(this, key);
-      const swatch = this.add.graphics();
-      let icon;
-      if (thumbKey) {
-        icon = this.add.image(0, -19, thumbKey).setScale(34 / TOWER_SPRITES[key].contentH);
+      const texture = ASSETS.towers[key];
+      let thumbnail;
+      if (texture && this.textures.exists(texture.key)) {
+        thumbnail = this.add.image(0, -21, texture.key).setOrigin(0.5);
+        const thumbScale = 34 / thumbnail.height;
+        thumbnail.setDisplaySize(thumbnail.width * thumbScale, 34);
       } else {
-        swatch.fillStyle(def.color, 1).fillRoundedRect(-16, -32, 32, 22, 4);
-        swatch.lineStyle(1, 0x000000, 1).strokeRoundedRect(-16, -32, 32, 22, 4);
-        icon = this.add.text(0, -21, icons[key] || '⚔️', { fontSize: '16px' }).setOrigin(0.5);
+        thumbnail = this.add.rectangle(0, -21, 28, 34, def.color).setStrokeStyle(1, 0x000000);
       }
       const name = this.add.text(0, 4, shortName[key] || def.name, {
         fontSize: '11px', color: '#f0e0c0', fontFamily: FONT_BTN, fontStyle: 'bold'
@@ -2604,7 +2397,7 @@ class UIScene extends Phaser.Scene {
         fontSize: '12px', color: '#ffcc44', fontFamily: FONT_BTN, fontStyle: 'bold'
       }).setOrigin(0.5);
       [name, cost].forEach(t => t.setShadow(1, 1, '#000', 2));
-      cell.add([frame, swatch, icon, name, cost]);
+      cell.add([frame, thumbnail, name, cost]);
       cell.setSize(60, 76).setInteractive({ useHandCursor: true });
       cell.on('pointerdown', () => {
         if (this.gameScene) this.gameScene.setSelectedTowerType(key);
@@ -2673,21 +2466,20 @@ class UIScene extends Phaser.Scene {
       };
       const canAfford = game.state.gold >= def.cost;
       drawRow(0x2a2418, canAfford ? 0xc9a84c : 0x6a5a36);
-      const swatchG = this.add.graphics();
-      const mk = towerTexKey(this, key);
-      let thumb = null;
-      if (mk) {
-        thumb = this.add.image(24, yy + rowH/2, mk).setScale(34 / TOWER_SPRITES[key].contentH);
+      const texture = ASSETS.towers[key];
+      let thumbnail;
+      if (texture && this.textures.exists(texture.key)) {
+        thumbnail = this.add.image(26, yy + rowH/2, texture.key).setOrigin(0.5);
+        const thumbScale = 34 / thumbnail.height;
+        thumbnail.setDisplaySize(thumbnail.width * thumbScale, 34);
       } else {
-        swatchG.fillStyle(def.color, 1).fillRoundedRect(14, yy + rowH/2 - 13, 20, 26, 4);
-        swatchG.lineStyle(1, 0x000, 1).strokeRoundedRect(14, yy + rowH/2 - 13, 20, 26, 4);
+        thumbnail = this.add.rectangle(26, yy + rowH/2, 28, 34, def.color).setStrokeStyle(1, 0x000000);
       }
       const name = this.add.text(44, yy + 6, def.name, {fontSize:'14px', color:'#f0e0c0', fontFamily: FONT_BTN, fontStyle:'bold'});
       const cost = this.add.text(44, yy + 24, `Custo: ${def.cost}`, {fontSize:'12px', color: canAfford ? '#ffcc44' : '#aa6666', fontFamily: FONT_BTN, fontStyle:'bold'});
       const desc = this.add.text(44, yy + 40, def.desc, {fontSize:'11px', color:'#a8a08c', fontFamily: FONT_BTN});
       [name, cost].forEach(t=>t.setShadow(1,1,'#000',2));
-      c.add([rg, swatchG, name, cost, desc]);
-      if (thumb) c.add(thumb);
+      c.add([rg, thumbnail, name, cost, desc]);
 
       const hit = this.add.zone(4, yy, rowW, rowH).setOrigin(0).setInteractive({useHandCursor: true});
       hit.on('pointerover', () => drawRow(0x3d3424, 0xffe88a));
