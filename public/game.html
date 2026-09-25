@@ -262,6 +262,11 @@ const ASSETS = {
     orc: { key: 'enemy_orc', url: 'assets/enemy_orc.webp' },
     troll: { key: 'enemy_troll', url: 'assets/enemy_troll.webp' },
     wraith: { key: 'enemy_wraith', url: 'assets/enemy_wraith.webp' },
+    goblin: { key: 'enemy_goblin', url: 'assets/enemy_goblin.webp' },
+    golem: { key: 'enemy_golem', url: 'assets/enemy_golem.webp' },
+    imp: { key: 'enemy_imp', url: 'assets/enemy_imp.webp' },
+    harpy: { key: 'enemy_harpy', url: 'assets/enemy_harpy.webp' },
+    demon: { key: 'enemy_demon', url: 'assets/enemy_demon.webp' },
   },
   base: { key: 'base_keep', url: 'assets/base_keep.webp' },
   slot: { key: 'slot_ring', url: 'assets/slot_ring.webp' },
@@ -283,6 +288,18 @@ const TOWER_TYPES = {
     color: 0x7a4abf, projColor: 0xc89cff, splash: 60,
     desc: "Dano em área mágico",
   },
+};
+
+// Calibração dos sprites de inimigo (ver ENEMY_TYPES.size para a escala procedural equivalente)
+const ENEMY_SPRITES = {
+  orc:    { contentH: 223, originY: 0.949, h: 52, baseY: 13 },
+  troll:  { contentH: 246, originY: 0.984, h: 68, baseY: 17 },
+  wraith: { contentH: 234, originY: 0.953, h: 56, baseY: 12 },
+  goblin: { contentH: 224, originY: 0.969, h: 40, baseY: 11 },
+  golem:  { contentH: 224, originY: 0.969, h: 80, baseY: 18 },
+  imp:    { contentH: 224, originY: 0.969, h: 40, baseY: 11 },
+  harpy:  { contentH: 224, originY: 0.969, h: 54, baseY: 5  }, // eleva um pouco por voar
+  demon:  { contentH: 224, originY: 0.969, h: 70, baseY: 16 },
 };
 
 const ENEMY_TYPES = {
@@ -1051,6 +1068,7 @@ class GameScene extends Phaser.Scene {
     this.drawPath();
     this.drawBase();
     this.createSlots();
+    this.drawAmbience();
 
     this.rangeIndicator = this.add.circle(0,0,0, 0x88ddaa, 0.15)
       .setStrokeStyle(2, 0x88ddaa, 0.6).setVisible(false);
@@ -1093,7 +1111,7 @@ class GameScene extends Phaser.Scene {
     this.slots = [];
 
     // limpa mapa (bg, caminho, base)
-    for (const g of (this._mapGfx || [])) if (g && g.scene) g.destroy();
+    for (const g of (this._mapGfx || [])) if (g && g.scene) { this.tweens.killTweensOf(g); g.destroy(); }
     this._mapGfx = [];
     if (this.baseSprite && this.baseSprite.scene) { this.baseSprite.destroy(); this.baseSprite = null; }
 
@@ -1102,6 +1120,7 @@ class GameScene extends Phaser.Scene {
     this.drawPath();
     this.drawBase();
     this.createSlots();
+    this.drawAmbience();
 
     // reset de estado de onda; ouro é redefinido para o valor inicial base
     // (ouro acumulado da fase anterior é descartado ao trocar de fase).
@@ -1314,6 +1333,38 @@ class GameScene extends Phaser.Scene {
       this.baseSprite.add([tower, top, rune]);
     }
     this.tweens.add({ targets: glow, scale: 1.25, alpha: 0.45, yoyo:true, repeat:-1, duration:1400 });
+  }
+
+  // Ambiência leve: vinheta + partículas (no máx. 14 objetos) na cor do estágio.
+  drawAmbience() {
+    if (!this._mapGfx) this._mapGfx = [];
+    const bgKey = ASSETS.stageBackgrounds[this.stage.id];
+    const moteColor = { bg_floresta: 0xd8e88a, bg_ruinas: 0xc8d0dc, bg_portao: 0xc89cff }[bgKey] || 0xe8d8ff;
+
+    const v = this.add.graphics().setDepth(28);
+    for (let i = 0; i < 12; i++) {
+      const inset = i * 6 + 3;
+      const a = 0.26 * Math.pow(1 - i / 12, 2);
+      v.lineStyle(6, 0x000000, a);
+      v.strokeRect(inset, inset, W - inset * 2, H - inset * 2);
+    }
+    this._mapGfx.push(v);
+
+    for (let n = 0; n < 14; n++) {
+      const r = Phaser.Math.FloatBetween(1.2, 2.6);
+      const m = this.add.circle(Phaser.Math.Between(20, W - 20), Phaser.Math.Between(90, H - 20), r, moteColor, 0.9)
+        .setDepth(24).setAlpha(0);
+      this._mapGfx.push(m);
+      this.tweens.add({
+        targets: m,
+        x: '+=' + Phaser.Math.Between(-50, 50),
+        y: '+=' + Phaser.Math.Between(-40, 20),
+        alpha: Phaser.Math.FloatBetween(0.35, 0.8),
+        duration: Phaser.Math.Between(2500, 5000),
+        yoyo: true, repeat: -1, ease: 'Sine.inOut',
+        delay: Phaser.Math.Between(0, 2000),
+      });
+    }
   }
 
   createSlots() {
@@ -1537,7 +1588,47 @@ class GameScene extends Phaser.Scene {
     const shadow = this.add.ellipse(0, sz/2+2, sz*0.9, sz*0.35, 0x000000, 0.45);
     c.add(shadow);
 
-    if (wave.type === 'orc') {
+    let hpWOverride = null, hpYOverride = null, spriteBody = null;
+    const spriteCfg = ENEMY_SPRITES[wave.type];
+    const spriteAsset = ASSETS.enemies[wave.type];
+    if (spriteCfg && spriteAsset && this.textures.exists(spriteAsset.key)) {
+      const scaleK = spriteCfg.h / spriteCfg.contentH;
+
+      // halos/auras atrás do sprite, conforme o tipo
+      if (wave.type === 'wraith' || wave.type === 'harpy') {
+        const haloColor = wave.type === 'wraith' ? 0x6a3a8a : 0xdfe8ff;
+        const halo = this.add.ellipse(0, spriteCfg.baseY - spriteCfg.h * 0.35, spriteCfg.h * 0.9, spriteCfg.h * 1.05, haloColor, 0.22);
+        c.add(halo);
+        this.tweens.add({ targets: halo, alpha: 0.08, scale: 1.15, yoyo: true, repeat: -1, duration: 900 });
+      } else if (wave.type === 'imp' || wave.type === 'demon') {
+        const auraColor = wave.type === 'imp' ? 0xff4400 : 0xff0000;
+        const aura = this.add.ellipse(0, spriteCfg.baseY - spriteCfg.h * 0.3, spriteCfg.h * 1.1, spriteCfg.h * 1.25, auraColor, 0.18);
+        c.add(aura);
+        this.tweens.add({ targets: aura, alpha: 0.06, scale: 1.2, yoyo: true, repeat: -1, duration: wave.type === 'imp' ? 350 : 700 });
+      }
+
+      body = this.add.image(0, spriteCfg.baseY, spriteAsset.key).setOrigin(0.5, spriteCfg.originY).setScale(scaleK);
+      spriteBody = body;
+      c.add(body);
+
+      // animações apenas no sprite filho (nunca no container, que se move em update())
+      if (wave.type === 'troll' || wave.type === 'golem') {
+        this.tweens.add({ targets: body, scaleY: scaleK * 0.95, yoyo: true, repeat: -1, duration: wave.type === 'golem' ? 520 : 420, ease: 'Sine.inOut' });
+      } else if (wave.type === 'demon') {
+        this.tweens.add({ targets: body, scaleY: scaleK * 0.97, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.inOut' });
+      } else if (wave.type === 'wraith') {
+        this.tweens.add({ targets: body, y: '+=4', alpha: 0.75, yoyo: true, repeat: -1, duration: 800, ease: 'Sine.inOut' });
+      } else if (wave.type === 'harpy') {
+        this.tweens.add({ targets: body, y: '-=6', angle: 4, yoyo: true, repeat: -1, duration: 500, ease: 'Sine.inOut' });
+      } else {
+        // orc, goblin, imp: leve balanço de corrida
+        this.tweens.add({ targets: body, y: spriteCfg.baseY + 2, yoyo: true, repeat: -1, duration: wave.type === 'imp' ? 200 : 180, ease: 'Sine.inOut' });
+      }
+
+      hpWOverride = Math.max(sz + 8, Math.round(spriteCfg.h * 0.6));
+      hpYOverride = spriteCfg.baseY - spriteCfg.h - 8;
+
+    } else if (wave.type === 'orc') {
       // corpo oval verde-musgo
       body = this.add.ellipse(0, 2, sz*0.95, sz*1.05, 0x556b2f).setStrokeStyle(2, 0x2a3318);
       // cabeça redonda
@@ -1654,7 +1745,7 @@ class GameScene extends Phaser.Scene {
 
 
     // HP bar arredondada via Graphics
-    const hpW = sz + 8, hpH = 6, hpY = -sz/2 - 10;
+    const hpW = hpWOverride || (sz + 8), hpH = 6, hpY = hpYOverride != null ? hpYOverride : (-sz/2 - 10);
     const hpG = this.add.graphics();
     const drawHp = (ratio) => {
       hpG.clear();
@@ -1667,7 +1758,7 @@ class GameScene extends Phaser.Scene {
     c.add(hpG);
 
     const enemy = {
-      container: c, body, type: wave.type, typeDef: t,
+      container: c, body, sprite: spriteBody, type: wave.type, typeDef: t,
       hp: wave.hp, maxHp: wave.hp, speed: wave.speed,
       pathIndex: 1, alive: true, reward: t.reward,
       hpG, drawHp,
@@ -1771,6 +1862,7 @@ class GameScene extends Phaser.Scene {
       const dx = target.x - e.container.x, dy = target.y - e.container.y;
       const dist = Math.hypot(dx, dy);
       const step = e.speed * dt;
+      if (e.sprite && Math.abs(dx) > 1) e.sprite.setFlipX(dx < 0);
       if (step >= dist) {
         e.container.x = target.x; e.container.y = target.y;
         e.pathIndex++;
@@ -1781,7 +1873,7 @@ class GameScene extends Phaser.Scene {
       }
     }
     // remover gelo tint quando passar
-    if (!frozen) for (const e of this.activeEnemies) if (e.alive && e.body.clearTint) e.body.clearTint();
+    if (!frozen) for (const e of this.activeEnemies) if (e.alive && e.body.clearTint && !(e.flashUntil > time)) e.body.clearTint();
 
     // torres atiram (escala com speed)
     for (const t of this.towers) {
@@ -1950,7 +2042,15 @@ class GameScene extends Phaser.Scene {
     e.hp -= dmg;
     const ratio = Math.max(0, e.hp / e.maxHp);
     if (e.drawHp) e.drawHp(ratio); else if (e.hpBar) e.hpBar.width = e.hpBarW * ratio;
-    if (e.body.setFillStyle) {
+    if (e.body.setTintFill) {
+      e.flashUntil = this.time.now + 70;
+      e.body.setTintFill(0xffffff);
+      this.time.delayedCall(60, () => {
+        if (!e.alive || !e.body || !e.body.scene) return;
+        if (this.time.now < this.state.freezeUntil) e.body.setTint(0x88ccff);
+        else e.body.clearTint();
+      });
+    } else if (e.body.setFillStyle) {
       const orig = e.typeDef.color;
       e.body.setFillStyle(0xffffff);
       this.time.delayedCall(60, () => { if (e.alive && e.body.setFillStyle) e.body.setFillStyle(orig); });
