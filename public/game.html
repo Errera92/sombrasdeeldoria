@@ -816,13 +816,28 @@ class StageSelectScene extends Phaser.Scene {
       fontSize:'22px', color:'#d8d2bf', fontFamily: FONT_TITLE, fontStyle:'italic'
     }).setOrigin(0.5).setShadow(2,2,'#000',3);
 
-    const cardW = 220, cardH = 440, gap = 24;
-    const totalW = STAGES.length*cardW + (STAGES.length-1)*gap;
-    const startX = (W - totalW)/2;
+    // Cards se redimensionam para sempre caberem na largura da tela (W), com um piso
+    // mínimo legível. Se, mesmo no piso, não couberem todos lado a lado, a fileira
+    // vira uma faixa arrastável (drag horizontal) — nunca fica cortada nas bordas.
+    const BASE_CARD_W = 220, BASE_CARD_H = 440, GAP = 16, SIDE_MARGIN = 40, MIN_CARD_W = 130;
+    let cardW = Math.floor((W - SIDE_MARGIN - (STAGES.length - 1) * GAP) / STAGES.length);
+    cardW = Phaser.Math.Clamp(cardW, MIN_CARD_W, BASE_CARD_W);
+    const cardH = Math.round(cardW * (BASE_CARD_H / BASE_CARD_W));
+    const sc = cardW / BASE_CARD_W;
+    const gap = GAP;
+    const totalW = STAGES.length * cardW + (STAGES.length - 1) * gap;
+    const fitsOnScreen = totalW <= W - SIDE_MARGIN;
+    const startX = fitsOnScreen ? (W - totalW) / 2 : 0;
+    const y = 160;
+
+    // Faixa que recebe os cards; quando não cabem, ela é arrastável horizontalmente.
+    const row = this.add.container(0, 0);
+    const maskShape = this.make.graphics({ x: 0, y: 0, add: false });
+    maskShape.fillStyle(0xffffff, 1).fillRect(0, y, W, cardH);
+    row.setMask(maskShape.createGeometryMask());
 
     STAGES.forEach((s, i) => {
       const x = startX + i*(cardW+gap);
-      const y = 160;
       const c = this.add.container(x + cardW/2, y + cardH/2);
 
       const cardG = this.add.graphics();
@@ -835,49 +850,56 @@ class StageSelectScene extends Phaser.Scene {
       c.add(cardG);
 
       // preview de cenário (com fallback procedural)
+      const previewH = 130 * sc;
       const bgKey = ASSETS.stageBackgrounds[s.id];
       if (bgKey && this.textures.exists(bgKey)) {
         const previewX = 0;
-        const previewY = -cardH/2 + 161;
-        const previewImage = this.add.image(previewX, previewY, bgKey).setDisplaySize(cardW-24, 130);
-        const maskShape = this.make.graphics({ x: 0, y: 0, add: false });
-        maskShape.fillStyle(0xffffff, 1).fillRoundedRect(
-          x + 12, y + 96, cardW - 24, 130, 10
-        );
-        previewImage.setMask(maskShape.createGeometryMask());
+        const previewY = -cardH/2 + 161*sc;
+        const previewImage = this.add.image(previewX, previewY, bgKey).setDisplaySize(cardW-24, previewH);
+        if (fitsOnScreen) {
+          // Máscara em coordenadas absolutas: só é válida quando os cards não se
+          // movem (sem arrasto). Com arrasto, o card se move dentro de `row` e uma
+          // máscara em coordenadas fixas ficaria dessincronizada — nesse caso a
+          // prévia fica sem cantos arredondados, mas sempre alinhada corretamente.
+          const previewMask = this.make.graphics({ x: 0, y: 0, add: false });
+          previewMask.fillStyle(0xffffff, 1).fillRoundedRect(
+            x + 12, y + 96*sc, cardW - 24, previewH, 10
+          );
+          previewImage.setMask(previewMask.createGeometryMask());
+        }
         c.add(previewImage);
       }
       const prev = this.add.graphics();
       if (!bgKey || !this.textures.exists(bgKey)) {
-        prev.fillStyle(s.palette.moss, 1).fillRoundedRect(-cardW/2+12, -cardH/2+96, cardW-24, 130, 10);
+        prev.fillStyle(s.palette.moss, 1).fillRoundedRect(-cardW/2+12, -cardH/2+96*sc, cardW-24, previewH, 10);
       }
-      prev.lineStyle(8, s.palette.pathEdge, 1);
+      prev.lineStyle(Math.max(3, 8*sc), s.palette.pathEdge, 1);
       prev.beginPath();
       const px = (p) => -cardW/2+12 + (p.x+30)/1340 * (cardW-24);
-      const py = (p) => -cardH/2+96 + (p.y)/720 * 130;
+      const py = (p) => -cardH/2+96*sc + (p.y)/720 * previewH;
       prev.moveTo(px(s.path[0]), py(s.path[0]));
       for (let k=1;k<s.path.length;k++) prev.lineTo(px(s.path[k]), py(s.path[k]));
       prev.strokePath();
-      prev.lineStyle(5, s.palette.path, 1);
+      prev.lineStyle(Math.max(2, 5*sc), s.palette.path, 1);
       prev.beginPath();
       prev.moveTo(px(s.path[0]), py(s.path[0]));
       for (let k=1;k<s.path.length;k++) prev.lineTo(px(s.path[k]), py(s.path[k]));
       prev.strokePath();
       c.add(prev);
 
-      const icon = this.add.text(0, -cardH/2+50, s.icon, { fontSize:'36px' }).setOrigin(0.5);
-      const title = this.add.text(0, -cardH/2+18, s.name, {
-        fontSize:'18px', color:'#f0e0ff', fontFamily: FONT_TITLE, fontStyle:'bold', align:'center', wordWrap:{width:cardW-20}
+      const icon = this.add.text(0, -cardH/2+50*sc, s.icon, { fontSize:Math.round(36*sc)+'px' }).setOrigin(0.5);
+      const title = this.add.text(0, -cardH/2+18*sc, s.name, {
+        fontSize:Math.max(13,Math.round(18*sc))+'px', color:'#f0e0ff', fontFamily: FONT_TITLE, fontStyle:'bold', align:'center', wordWrap:{width:cardW-20}
       }).setOrigin(0.5,0);
       title.setShadow(2,2,'#000',4);
-      const theme = this.add.text(0, -cardH/2+240, s.theme, {
-        fontSize:'12px', color:'#c0b89a', fontFamily: FONT_BTN, fontStyle:'italic'
+      const theme = this.add.text(0, -cardH/2+240*sc, s.theme, {
+        fontSize:Math.max(9,Math.round(12*sc))+'px', color:'#c0b89a', fontFamily: FONT_BTN, fontStyle:'italic'
       }).setOrigin(0.5,0);
       const stars2 = '★'.repeat(s.baseDifficulty) + '☆'.repeat(5-s.baseDifficulty);
-      const dif = this.add.text(0, -cardH/2+264, stars2, {fontSize:'20px', color:'#ffcc44'}).setOrigin(0.5,0);
+      const dif = this.add.text(0, -cardH/2+264*sc, stars2, {fontSize:Math.max(12,Math.round(20*sc))+'px', color:'#ffcc44'}).setOrigin(0.5,0);
       dif.setShadow(2,2,'#000',3);
-      const phasesTxt = this.add.text(0, -cardH/2+300, `${s.phases.length} fases`, {
-        fontSize:'14px', color:'#e8d8b0', fontFamily: FONT_BTN
+      const phasesTxt = this.add.text(0, -cardH/2+300*sc, `${s.phases.length} fases`, {
+        fontSize:Math.max(10,Math.round(14*sc))+'px', color:'#e8d8b0', fontFamily: FONT_BTN
       }).setOrigin(0.5,0);
       c.add([icon, title, theme, dif, phasesTxt]);
 
@@ -886,10 +908,11 @@ class StageSelectScene extends Phaser.Scene {
       hit.on('pointerout',  () => drawCard(0xc9a84c));
       c.add(hit);
 
-      const btn = makeButton(this, 0, cardH/2-36, cardW-40, 46, "Selecionar", {
+      const btn = makeButton(this, 0, cardH/2-36*sc, cardW-40, Math.max(34,46*sc), "Selecionar", {
         fill: 0x2d5a2a, stroke: 0xc9a84c, hoverFill: 0x3d7a3a,
-        fontSize: 18, fontColor: '#e8ffe0',
+        fontSize: Math.max(13,Math.round(18*sc)), fontColor: '#e8ffe0',
         onClick: () => {
+          if (row.wasDragged) return;
           this.scene.stop('UIScene');
           this.scene.stop('GameScene');
           this.scene.stop('GameOverScene');
@@ -898,7 +921,40 @@ class StageSelectScene extends Phaser.Scene {
       });
       c.add(btn);
       c.sendToBack(cardG);
+      row.add(c);
     });
+
+    if (!fitsOnScreen) {
+      // Arrasto horizontal via eventos globais do input da cena (this.input.on),
+      // que disparam para QUALQUER toque na tela sem "roubar" o clique dos cards/botões
+      // (diferente de criar uma zona interativa por cima, que bloquearia os cards).
+      const minX = W - SIDE_MARGIN/2 - totalW;
+      const maxX = SIDE_MARGIN/2;
+      let dragging = false, startPointerX = 0, startRowX = 0;
+      this.input.on('pointerdown', (p) => {
+        if (p.y < y || p.y > y + cardH) return;
+        dragging = true; row.wasDragged = false;
+        startPointerX = p.x; startRowX = row.x;
+      });
+      this.input.on('pointermove', (p) => {
+        if (!dragging || !p.isDown) return;
+        const dx = p.x - startPointerX;
+        if (Math.abs(dx) > 6) row.wasDragged = true;
+        row.x = Phaser.Math.Clamp(startRowX + dx, minX, maxX);
+      });
+      const endDrag = () => { dragging = false; };
+      this.input.on('pointerup', endDrag);
+      this.input.on('pointerupoutside', endDrag);
+      this.events.once('shutdown', () => {
+        this.input.off('pointerdown'); this.input.off('pointermove');
+        this.input.off('pointerup'); this.input.off('pointerupoutside');
+      });
+      // dica sutil de que dá para arrastar
+      const hint = this.add.text(W/2, y + cardH + 14, "◀  arraste para ver mais estágios  ▶", {
+        fontSize:'13px', color:'#c8b8e8', fontFamily: FONT_BTN, fontStyle:'italic'
+      }).setOrigin(0.5,0).setAlpha(0.75);
+      this.tweens.add({ targets: hint, alpha: 0.3, yoyo: true, repeat: -1, duration: 1200 });
+    }
   }
 }
 
@@ -2104,7 +2160,10 @@ class UIScene extends Phaser.Scene {
     this.goldText  = this.add.text(220, 18, "Ouro: 150",  {fontSize:'20px', color:'#ffcc44', fontFamily: FONT_BTN, fontStyle:'bold'});
     this.waveText  = this.add.text(390, 18, "Onda: 0/10  ·  Fase: 1/5", {fontSize:'18px', color:'#e8e0c8', fontFamily: FONT_BTN, fontStyle:'bold'});
     [this.hpText, this.goldText, this.waveText].forEach(t => t.setShadow(2,2,'#000000',3));
-    this.title = this.add.text(W/2, 8, "", {fontSize:'16px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'italic'}).setOrigin(0.5,0);
+    this.title = this.add.text(W/2, 60, "", {
+      fontSize:'14px', color:'#e8c8ff', fontFamily: FONT_TITLE, fontStyle:'italic',
+      align:'center', wordWrap:{ width: 380, useAdvancedWrap: true },
+    }).setOrigin(0.5,0);
     this.title.setShadow(2,2,'#000000',4);
     this.updateStageTitle();
 
