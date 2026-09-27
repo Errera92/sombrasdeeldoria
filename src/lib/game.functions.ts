@@ -3,32 +3,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { UPGRADES } from "@/lib/upgrades";
 
-const ResultSchema = z.object({
-  wave: z.number().int().min(0).max(100),
-  gold: z.number().int().min(0).max(100000),
-  victory: z.boolean(),
-});
-
-export const submitGameResult = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) => ResultSchema.parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { data: row, error } = await supabase.rpc("process_game_result", {
-      p_wave: data.wave,
-      p_gold: data.gold,
-      p_victory: data.victory,
-    });
-    if (error) throw new Error(error.message);
-    const r = Array.isArray(row) ? row[0] : row;
-    return {
-      gems: r?.gems ?? 0,
-      high_score: r?.high_score ?? 0,
-      score: r?.score ?? 0,
-      earned: r?.earned ?? 0,
-    };
-  });
-
 const UpgradeSchema = z.object({
   upgradeId: z.string().min(1).max(64),
 });
