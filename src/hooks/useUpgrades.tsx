@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { UPGRADES, computeMultipliers, type UpgradeLevels } from "@/lib/upgrades";
-import { purchaseUpgrade, submitGameResult } from "@/lib/game.functions";
+import { purchaseUpgrade } from "@/lib/game.functions";
 
 export interface Profile {
   id: string;
@@ -17,7 +17,6 @@ export function useUpgrades(userId: string | undefined) {
   const [levels, setLevels] = useState<UpgradeLevels>({});
   const [loading, setLoading] = useState(true);
   const purchaseFn = useServerFn(purchaseUpgrade);
-  const submitFn = useServerFn(submitGameResult);
 
   const refresh = useCallback(async () => {
     if (!userId) return;
@@ -62,19 +61,7 @@ export function useUpgrades(userId: string | undefined) {
     }
   }, [userId, profile, levels, purchaseFn]);
 
-  const submitResult = useCallback(async (wave: number, gold: number, victory: boolean) => {
-    if (!userId || !profile) return;
-    try {
-      const res = await submitFn({ data: { wave, gold, victory } });
-      setProfile({ ...profile, gems: res.gems, high_score: res.high_score });
-      if (res.earned > 0) toast.success(`+${res.earned} 💎`);
-      if (res.score === res.high_score && res.score > 0) toast.success(`Recorde: ${res.score}!`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao registrar resultado");
-    }
-  }, [userId, profile, submitFn]);
-
   const multipliers = computeMultipliers(levels);
 
-  return { profile, levels, loading, buyUpgrade, submitResult, multipliers, refresh };
+  return { profile, levels, loading, buyUpgrade, multipliers, refresh };
 }

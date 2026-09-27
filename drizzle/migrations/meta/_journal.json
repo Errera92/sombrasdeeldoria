@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790499586793,
+      "tag": "0000_sync_upgrade_limits_and_harden_phase_scoring",
+      "breakpoints": true
+    }
+  ]
+}
