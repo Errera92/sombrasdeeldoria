@@ -1141,6 +1141,17 @@ class GameScene extends Phaser.Scene {
 
   // Recarrega uma nova fase sem reiniciar a cena: limpa mapa, inimigos,
   // torres e slots, e redesenha tudo com o novo path/slots.
+  destroyEnemyVisual(enemy) {
+    if (!enemy || !enemy.container) return;
+    const container = enemy.container;
+    const children = Array.isArray(container.list) ? [...container.list] : [];
+    for (const child of children) this.tweens.killTweensOf(child);
+    this.tweens.killTweensOf(container);
+    if (container.scene) container.destroy(true);
+    enemy.sprite = null;
+    enemy.body = null;
+  }
+
   loadPhase(phaseIndex) {
     this.phaseId = phaseIndex;
     this.phase = this.stage.phases[phaseIndex];
@@ -1150,7 +1161,7 @@ class GameScene extends Phaser.Scene {
 
     // limpa entidades dinâmicas
     if (this.spawnTimer) { try { this.spawnTimer.remove(false); } catch(_){} this.spawnTimer = null; }
-    for (const e of this.activeEnemies) if (e.container && e.container.scene) e.container.destroy();
+    for (const e of this.activeEnemies) this.destroyEnemyVisual(e);
     for (const p of this.activeProjectiles) if (p.gfx && p.gfx.scene) p.gfx.destroy();
     this.activeEnemies = [];
     this.activeProjectiles = [];
@@ -1220,12 +1231,12 @@ class GameScene extends Phaser.Scene {
     this.events.off('setSpeed', this.handleSpeedChange, this);
     this.tweens.killAll();
     this.time.removeAllEvents();
+    for (const e of this.activeEnemies || []) this.destroyEnemyVisual(e);
     try { if (this.physics && this.physics.world && this.physics.world.shutdown) this.physics.world.shutdown(); } catch (_) {}
     this.clearGroup(this.enemies);
     this.clearGroup(this.projectiles);
     this.clearGroup(this.towerGroup);
     this.clearGroup(this.slotGroup);
-    for (const e of this.activeEnemies || []) if (e.container && e.container.scene) e.container.destroy();
     for (const t of this.towers || []) if (t.container && t.container.scene) t.container.destroy();
     for (const s of this.slots || []) if (s.container && s.container.scene) s.container.destroy();
     if (this.projectileLayer && this.projectileLayer.scene) this.projectileLayer.destroy();
@@ -1716,7 +1727,7 @@ class GameScene extends Phaser.Scene {
       const eye2 = this.add.circle( sz*0.2, -sz*0.32, 2.5, 0xffe044);
       c.add([body, sh1, sh2, armorG, eye1, eye2]);
       // pisada pesada
-      this.tweens.add({ targets: c, scaleY: 0.95, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.inOut' });
+      this.tweens.add({ targets: body, scaleY: 0.95, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.inOut' });
 
     } else if (wave.type === 'wraith') {
       const halo = this.add.ellipse(0, -2, sz*1.6, sz*1.9, 0x6a3a8a, 0.25);
@@ -1750,7 +1761,7 @@ class GameScene extends Phaser.Scene {
       const eye1 = this.add.circle(-sz*0.12, -sz*0.5, 2.5, 0xffaa22);
       const eye2 = this.add.circle( sz*0.12, -sz*0.5, 2.5, 0xffaa22);
       c.add([body, head, crack, eye1, eye2]);
-      this.tweens.add({ targets: c, scaleY: 0.96, yoyo: true, repeat: -1, duration: 520, ease: 'Sine.inOut' });
+      this.tweens.add({ targets: body, scaleY: 0.96, yoyo: true, repeat: -1, duration: 520, ease: 'Sine.inOut' });
 
     } else if (wave.type === 'imp') {
       // diabrete flamejante
@@ -1791,7 +1802,7 @@ class GameScene extends Phaser.Scene {
       const fang2 = this.add.triangle( sz*0.1, -sz*0.28, -2,-4, 2,-4, 0,6, 0xffffff);
       c.add([aura, body, head, horn1, horn2, eye1, eye2, fang1, fang2]);
       this.tweens.add({ targets: aura, alpha: 0.08, scale: 1.2, yoyo: true, repeat: -1, duration: 700 });
-      this.tweens.add({ targets: c, scaleY: 0.97, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.inOut' });
+      this.tweens.add({ targets: body, scaleY: 0.97, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.inOut' });
 
     } else {
       // fallback genérico
@@ -2098,13 +2109,13 @@ class GameScene extends Phaser.Scene {
     e.hp -= dmg;
     const ratio = Math.max(0, e.hp / e.maxHp);
     if (e.drawHp) e.drawHp(ratio); else if (e.hpBar) e.hpBar.width = e.hpBarW * ratio;
-    if (e.body.setTintFill) {
+    if (e.sprite && e.sprite.setTintFill) {
       e.flashUntil = this.time.now + 70;
-      e.body.setTintFill(0xffffff);
+      e.sprite.setTintFill(0xffffff);
       this.time.delayedCall(60, () => {
-        if (!e.alive || !e.body || !e.body.scene) return;
-        if (this.time.now < this.state.freezeUntil) e.body.setTint(0x88ccff);
-        else e.body.clearTint();
+        if (!e.alive || !e.sprite || !e.sprite.scene) return;
+        if (this.time.now < this.state.freezeUntil) e.sprite.setTint(0x88ccff);
+        else e.sprite.clearTint();
       });
     } else if (e.body.setFillStyle) {
       const orig = e.typeDef.color;
@@ -2117,7 +2128,7 @@ class GameScene extends Phaser.Scene {
       this.spawnSpark(e.container.x, e.container.y, e.typeDef.spark, 12);
       this.state.gold += Math.round(e.reward * window.getActiveMult('goldBonus', 'global'));
       this.state.enemiesAlive--;
-      e.container.destroy();
+      this.destroyEnemyVisual(e);
       this.events.emit('stateUpdate', this.state);
     }
   }
@@ -2128,7 +2139,7 @@ class GameScene extends Phaser.Scene {
     this.state.enemiesAlive--;
     this.state.hp -= 1;
     this.state.tookDamage = true;
-    e.container.destroy();
+    this.destroyEnemyVisual(e);
     this.cameras.main.flash(120, 80, 0, 0);
     this.events.emit('stateUpdate', this.state);
     if (this.state.hp <= 0) {
