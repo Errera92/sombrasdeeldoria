@@ -2109,13 +2109,13 @@ class GameScene extends Phaser.Scene {
     e.hp -= dmg;
     const ratio = Math.max(0, e.hp / e.maxHp);
     if (e.drawHp) e.drawHp(ratio); else if (e.hpBar) e.hpBar.width = e.hpBarW * ratio;
-    if (e.body.setTintFill) {
+    if (e.sprite && e.sprite.setTintFill) {
       e.flashUntil = this.time.now + 70;
-      e.body.setTintFill(0xffffff);
+      e.sprite.setTintFill(0xffffff);
       this.time.delayedCall(60, () => {
-        if (!e.alive || !e.body || !e.body.scene) return;
-        if (this.time.now < this.state.freezeUntil) e.body.setTint(0x88ccff);
-        else e.body.clearTint();
+        if (!e.alive || !e.sprite || !e.sprite.scene) return;
+        if (this.time.now < this.state.freezeUntil) e.sprite.setTint(0x88ccff);
+        else e.sprite.clearTint();
       });
     } else if (e.body.setFillStyle) {
       const orig = e.typeDef.color;
