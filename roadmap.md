@@ -6,3 +6,4 @@
 - [x] Restringir e ponderar o score de `process_phase_result`, incluindo limite de ouro gasto.
 - [x] Remover `process_game_result` e o export morto `submitGameResult` após confirmar ausência de imports.
 - [x] Concluir e validar somente a Fase 3 visual dos inimigos após as correções do backend.
+- [x] Concluir somente a Fase 4 (polimento): projéteis, ambiência por estágio e acabamento da UI in-game.
