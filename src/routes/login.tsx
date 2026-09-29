@@ -37,8 +37,9 @@ function LoginPage() {
       if (mode === "signup") {
         if (!nickname.trim() || nickname.trim().length < 3 || nickname.trim().length > 20) { toast.error("Nickname precisa ter entre 3 e 20 caracteres"); return; }
         // Check nickname availability
-        const { data: exists } = await supabase.from("profiles").select("id").eq("nickname", nickname).maybeSingle();
-        if (exists) { toast.error("Esse nickname já está em uso"); return; }
+        const { data: available, error: availErr } = await supabase.rpc("nickname_available", { p_nickname: nickname.trim() });
+        if (availErr) { toast.error("Não foi possível verificar o nickname. Tente novamente."); return; }
+        if (available === false) { toast.error("Esse nickname já está em uso"); return; }
         const { error } = await supabase.auth.signUp({
           email, password,
           options: {

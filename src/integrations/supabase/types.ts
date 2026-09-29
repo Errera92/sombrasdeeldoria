@@ -254,6 +254,10 @@ export type Database = {
           nickname: string
         }[]
       }
+      nickname_available: {
+        Args: { p_nickname: string }
+        Returns: boolean
+      }
       process_phase_result: {
         Args: {
           p_all_phases_no_damage: boolean
