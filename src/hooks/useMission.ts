@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
+import { toast } from 'sonner'
 import { supabase } from '@/integrations/supabase/client'
 import type { MissionProgress, PhaseResultPayload, PhaseResultResponse } from '@/lib/missions'
 import { submitPhaseResult } from '@/lib/missions.functions'
@@ -39,8 +40,9 @@ export function useMissions(userId: string | undefined) {
       const res = await submitFn({ data: payload })
       await refresh()
       return res
-    } catch (e) {
+    } catch (e: any) {
       console.error(e)
+      toast.error(e?.message ?? 'Falha ao registrar resultado da fase (missões/gems não foram salvos)')
       return null
     }
   }, [submitFn, refresh])
